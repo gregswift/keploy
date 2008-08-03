@@ -1,0 +1,128 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+# keploy - SSH Public Key Deplyment Utility
+# Copyright © 2007 Greg Swift gregswift@gmail.com
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""
+ Import Standard Modules
+"""
+from optparse import OptionParser, make_option
+
+"""
+ Import local modules
+"""
+import keploy
+
+
+"""
+ Define Variables
+"""
+options_list = [
+  make_option("-i", dest="id_file",
+    help="specifies identity file", default=None),
+  make_option("-l", "--login", dest="userid", 
+    help="define userid for remote connections", default=None),
+  make_option("-f", "--file", dest="target_file",
+    help="read list of targets from file", default=None),
+  make_option("-k", "--use-known", action="store_true", dest="use_known",
+    help="read list of targets from known_hosts files", default=False),
+  make_option("-r", "--remove", action="store_true",
+    help="remove primary identity from remote(s)", default=False),
+  make_option("-c", "--change", dest="old_id_file",
+    help="replace old identity with new one on remote(s)", default=False),
+  make_option("-A", action="store_true", dest="forward",
+    help="enable/disable agent forwarding on remote", default=False),
+  make_option("-v", action="store_true", dest="verbose",
+    help="give verbose output", default=True),
+  make_option("-q", "--quiet", action="store_false", dest="verbose",
+    help="quiet the output")
+]
+#  make_option("-y", action="store_true", dest="accept_unknown",
+#    help="accept host key if visiting host for first time", default=False),
+
+"""
+ Define Functions
+"""
+def cleanUp(ret):
+ """Do a clean and proper sys.exit()
+
+ executes sys.exit(int(ret))"""
+ sys.exit(ret)
+
+def handler(signum, frame):
+ if (signum == 2):
+  print 'Caught interrupt signal, cleaning up...'
+ elif (signum == 15):
+  print 'Cleaning up...'
+ cleanUp(1)
+
+def standardOut(msg, on=True):
+ """When quiet is not enabled, display msg provided """
+ if (on):
+   print msg
+
+def debugOut(msg, name=None, on=debug):
+ """When debug is enabled, output is printed to the display."""
+ if (name is not None):
+  name = name+': '
+ else:
+  name = ''
+ try:
+  if (on == 1):
+   print 'DEBUG: %s%s' % (name, msg)
+  else:
+   pass
+ except:
+  print 'MALFORMED DEBUG: %s%s' % (name, msg)
+
+def errorOut(msg, ret=1):
+ """When debug is enabled, output is printed to the display.
+
+ returns nothing"""
+ type = ['WARNING', 'ERROR']
+ out = '%s: %s' % (type[ret], msg)
+ if (ret == 0):
+  print out
+ elif (ret == 1):
+  out += '\n'
+  sys.stderr.write(out)
+  cleanUp(ret)
+
+def getOptions(opt_list=options_list, usage='%prog [options] [hosts]',
+  version='%prog '+version):
+ """Process and return w/ the cli options
+
+ returns dict(options), list(args)"""
+ debugOut('getOptions(opt_list=%s, usage=%s, version=%s)' % (opt_list, 
+   usage, version))
+ p = OptionParser(option_list=opt_list, usage=usage, version=version)
+ (options, args) = p.parse_args()
+ debugOut(options, 'Parsed options are')
+ debugOut(args, 'Parsed args are')
+ return (options, args)
+
+
+"""
+ Run application
+"""
+if __name__ == "__main__":
+ bin = getSSHbinary()
+ if (bin is None):
+  errorOut('Cannot locate ssh binary')
+ elif (bin is False):
+  errorOut('%s is not executable by your user' % (ssh_bin))
+ main()
