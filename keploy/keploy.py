@@ -2,8 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # keploy - SSH Public Key Deplyment Utility
-# Copyright © 2007 bluEmber Solutions, LLC
-# Written by: Greg Swift <gswift@bluember.net>
+# Copyright © 2007 Greg Swift gregswift@gmail.com
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -21,116 +20,59 @@
 import os
 import signal
 import sys
-from optparse import OptionParser, make_option
 
 """
  Define Variables
 """
-debug = 0
-version = "0.4"
+DEBUG = 0
+VERSION = "0.5"
 
-ssh_bin = os.popen('which ssh').read().strip()
-ssh_config = "/etc/ssh/ssh_config"
-ssh_home_dir = "~/.ssh/"
-e_ssh_home_dir = os.path.expanduser(ssh_home_dir)
-tmp_file = os.path.join(ssh_home_dir, 'keyploy.tmp')
-id_files = (os.path.join(e_ssh_home_dir, 'id_rsa.pub'),
-  os.path.join(e_ssh_home_dir,'id_dsa.pub'),
-  os.path.join(e_ssh_home_dir,'identity.pub'))
-host_files = [os.path.join(e_ssh_home_dir,'known_hosts'),
-  os.path.join(e_ssh_home_dir,'known_hosts2')]
-auth_keys_file = os.path.join(ssh_home_dir,'authorized_keys')
-options_list = [
-  make_option("-i", dest="id_file",
-    help="specifies identity file", default=None),
-  make_option("-l", "--login", dest="userid", 
-    help="define userid for remote connections", default=None),
-  make_option("-f", "--file", dest="target_file",
-    help="read list of targets from file", default=None),
-  make_option("-k", "--use-known", action="store_true", dest="use_known",
-    help="read list of targets from known_hosts files", default=False),
-  make_option("-r", "--remove", action="store_true",
-    help="remove primary identity from remote(s)", default=False),
-  make_option("-c", "--change", dest="old_id_file",
-    help="replace old identity with new one on remote(s)", default=False),
-  make_option("-A", action="store_true", dest="forward",
-    help="enable/disable agent forwarding on remote", default=False),
-  make_option("-v", action="store_true", dest="verbose",
-    help="give verbose output", default=True),
-  make_option("-q", "--quiet", action="store_false", dest="verbose",
-    help="quiet the output")
-]
-#  make_option("-y", action="store_true", dest="accept_unknown",
-#    help="accept host key if visiting host for first time", default=False),
-pass_warn = '\nNOTICE: You may be prompted for you password,\n'
-pass_warn += 'NOTICE: this is directly from the ssh client, not keploy\n'
+PW_WARN = '\nNOTICE: You may be prompted for you password,\n'
+PW_WARN += 'NOTICE: this is directly from the ssh client, not keploy\n'
+
+class KeployVariables:
+ def __init__(self, user=None):
+  self.ssh_bin = findSSHbin()
+  self.ssh_config = '/etc/ssh/ssh_config'
+  if (not os.access(self.ssh_config, os.R_OK)):
+   self.ssh_config = None
+  self.ssh_home_dir = os.path.expanduser('~/.ssh')
+  self.tmp_file = os.path.join(self.ssh_home_dir, 'keyploy.tmp')
+  self.id_files = (os.path.join(self.ssh_home_dir, 'id_rsa.pub'),
+    os.path.join(self.ssh_home_dir,'id_dsa.pub'),
+    os.path.join(self.ssh_home_dir,'identity.pub'))
+  self.host_files = [os.path.join(self.ssh_home_dir,'known_hosts'),
+    os.path.join(self.ssh_home_dir,'known_hosts2')]
+  self.auth_keys_file = os.path.join(self.ssh_home_dir,'authorized_keys')
+  
+ def set(self, name, value):
+  setattr(self, name, value)
 
 """
  Define Functions
 """
-def cleanUp(ret):
- """Do a clean and proper sys.exit()
-
- executes sys.exit(int(ret))"""
- sys.exit(ret)
-
-def handler(signum, frame):
- if (signum == 2):
-  print 'Caught interrupt signal, cleaning up...'
- elif (signum == 15):
-  print 'Cleaning up...'
- cleanUp(1)
-
-def standardOut(msg, on=True):
- """When quiet is not enabled, display msg provided """
- if (on):
-   print msg
-
-def debugOut(msg, name=None, on=debug):
- """When debug is enabled, output is printed to the display."""
- if (name is not None):
-  name = name+': '
- else:
-  name = ''
- try:
-  if (on == 1):
-   print 'DEBUG: %s%s' % (name, msg)
-  else:
-   pass
- except:
-  print 'MALFORMED DEBUG: %s%s' % (name, msg)
-
-def errorOut(msg, ret=1):
- """When debug is enabled, output is printed to the display.
-
- returns nothing"""
- type = ['WARNING', 'ERROR']
- out = '%s: %s' % (type[ret], msg)
- if (ret == 0):
-  print out
- elif (ret == 1):
-  out += '\n'
-  sys.stderr.write(out)
-  cleanUp(ret)
-
-def getOptions(opt_list=options_list, usage='%prog [options] [hosts]',
-  version='%prog '+version):
- """Process and return w/ the cli options
-
- returns dict(options), list(args)"""
- debugOut('getOptions(opt_list=%s, usage=%s, version=%s)' % (opt_list, 
-   usage, version))
- p = OptionParser(option_list=opt_list, usage=usage, version=version)
- (options, args) = p.parse_args()
- debugOut(options, 'Parsed options are')
- debugOut(args, 'Parsed args are')
- return (options, args)
+def getSSHbinary():
+	"""
+	Try to locate the ssh binary using which.
+	If 'None' we found nothing
+	If 'False' it is not executeable (shouldn't happen, but why not test?)
+	
+	returns str(ssh_bin)
+	"""
+	ssh_bin = os.popen('which ssh').read().strip()
+	if (ssh_bin == ''):
+		ssh_bin = None
+	elif (os.access(ssh_bin, os.X_OK)):
+		ssh_bin = False
+	return ssh_bin
 
 def getHostsFromFile(get_from=None, known=False, verbose=True):
- """Read hosts from provided file.  If no file specified,
+ """
+ Read hosts from provided file.  If no file specified,
  try to read ~/.ssh/known_hosts
 
- returns list(hosts)"""
+ returns list(hosts)
+ """
  debugOut('getHostsFromFile(get_from=%s)' % (get_from))
  global host_files
  if (get_from is not None):
@@ -199,32 +141,36 @@ to the external host(s)
  return str(identity)
 
 def toggleAgentForwarding(on, ssh_call, end_ssh_call, verbose=True):
-  command = ''
-  forward_option = 'ForwardAgent'
-  ssh_user_config_file = os.path.join(ssh_home_dir, 'config')
-  command +=  'grep -v \"%s\" %s > %s 2> /dev/null;' % (
-    forward_option, ssh_user_config_file, tmp_file)
-  command += 'mv -f %s %s 2>/dev/null; chmod 600 %s 2>/dev/null;' % (
-    tmp_file, ssh_user_config_file, ssh_user_config_file)
+ """
+ This function 
+ """
+ command = ''
+ forward_option = 'ForwardAgent'
+ ssh_user_config_file = os.path.join(ssh_home_dir, 'config')
+ command +=  'grep -v \"%s\" %s > %s 2> /dev/null;' % (
+   forward_option, ssh_user_config_file, tmp_file)
+ command += 'mv -f %s %s 2>/dev/null; chmod 600 %s 2>/dev/null;' % (
+   tmp_file, ssh_user_config_file, ssh_user_config_file)
+ if (on):
+  command += 'echo \'%s yes\' >> %s 2> /dev/null; grep \"%s\" %s' % (
+    forward_option, ssh_user_config_file, forward_option, ssh_user_config_file)
+ remote_command=ssh_call+command+end_ssh_call
+ debugOut(remote_command, 'Executing')
+ ret = os.popen(remote_command).readlines()
+ if (ret):
   if (on):
-   command += 'echo \'%s yes\' >> %s 2> /dev/null; grep \"%s\" %s' % (
-     forward_option, ssh_user_config_file, forward_option, ssh_user_config_file)
-  remote_command=ssh_call+command+end_ssh_call
-  debugOut(remote_command, 'Executing')
-  ret = os.popen(remote_command).readlines()
-  if (ret):
-   if (on):
-    status = 'enabled'
-   else:
-    status = 'failed to disable'
-   for line in ret:
-    debugOut(line)
+   status = (True, 'enabled')
   else:
-   if (on):
-    status = 'failed to enable'
-   else:
-    status = 'disabled'
-  standardOut('\t\tAgent Forwarding: %s' % (status), verbose)
+   status = (False, 'failed to disable')
+  for line in ret:
+   debugOut(line)
+ else:
+  if (on):
+   status = (False, 'failed to enable')
+  else:
+   status = (True, 'disabled')
+ return status
+ #standardOut('\t\tAgent Forwarding: %s' % (status), verbose)
 
 
 def main():
@@ -264,6 +210,7 @@ def main():
   (old_identity) = getIdentity(options.old_id_file, options.verbose)
   options.remove = True
 
+def pushToRemote(vars, hosts)
  for host in hosts:
   ssh_call = '%s -qq %s %s \'' % (ssh_bin, options.userid, host)
   end_ssh_call = '\''
@@ -313,12 +260,3 @@ def main():
   if (options.forward):
    if (not options.remove or options.old_id_file):
     toggleAgentForwarding(True, ssh_call, end_ssh_call, options.verbose)
-"""
- Run application
-"""
-if __name__ == "__main__":
- if (ssh_bin == ''):
-  errorOut('Cannot locate ssh binary')
- elif (not os.access(ssh_bin, os.X_OK)):
-  errorOut('%s does not exist, or is not executable by your user' % (ssh_bin))
- main()
