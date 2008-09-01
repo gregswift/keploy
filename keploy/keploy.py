@@ -24,239 +24,245 @@ import sys
 """
  Define Variables
 """
-DEBUG = 0
+DEBUG = True
 VERSION = "0.5"
 
 PW_WARN = '\nNOTICE: You may be prompted for you password,\n'
 PW_WARN += 'NOTICE: this is directly from the ssh client, not keploy\n'
 
 class KeployVariables:
- def __init__(self, user=None):
-  self.ssh_bin = findSSHbin()
-  self.ssh_config = '/etc/ssh/ssh_config'
-  if (not os.access(self.ssh_config, os.R_OK)):
-   self.ssh_config = None
-  self.ssh_home_dir = os.path.expanduser('~/.ssh')
-  self.tmp_file = os.path.join(self.ssh_home_dir, 'keyploy.tmp')
-  self.id_files = (os.path.join(self.ssh_home_dir, 'id_rsa.pub'),
-    os.path.join(self.ssh_home_dir,'id_dsa.pub'),
-    os.path.join(self.ssh_home_dir,'identity.pub'))
-  self.host_files = [os.path.join(self.ssh_home_dir,'known_hosts'),
-    os.path.join(self.ssh_home_dir,'known_hosts2')]
-  self.auth_keys_file = os.path.join(self.ssh_home_dir,'authorized_keys')
-  
- def set(self, name, value):
-  setattr(self, name, value)
+  def __init__(self, user=None):
+    self.ssh_bin = findSSHbin()
+    self.ssh_config = '/etc/ssh/ssh_config'
+    if (not os.access(self.ssh_config, os.R_OK)):
+      self.ssh_config = None
+    self.ssh_home_dir = os.path.expanduser('~/.ssh')
+    self.tmp_file = os.path.join(self.ssh_home_dir, 'keyploy.tmp')
+    self.id_files = (os.path.join(self.ssh_home_dir, 'id_rsa.pub'),
+                     os.path.join(self.ssh_home_dir,'id_dsa.pub'),
+                     os.path.join(self.ssh_home_dir,'identity.pub'))
+    self.host_files = [os.path.join(self.ssh_home_dir,'known_hosts'),
+                       os.path.join(self.ssh_home_dir,'known_hosts2')]
+    self.auth_keys_file = os.path.join(self.ssh_home_dir,'authorized_keys')
+    self.user = user
+
+  def set(self, name, value):
+    setattr(self, name, value)
 
 """
- Define Functions
+ Define Output Functions and cleanUp Function
+"""
+def standardOut(msg, on=True):
+  """When quiet is not enabled, display msg provided """
+  if (on):
+    print msg
+
+def debugOut(msg, name=None, on=DEBUG):
+  """When debug is enabled, output is printed to the display."""
+  if (name is not None):
+    name = name+': '
+  else:
+    name = ''
+  try:
+    if (on):
+      print 'DEBUG: %s%s' % (name, msg)
+    else:
+      pass
+  except:
+    print 'MALFORMED DEBUG: %s%s' % (name, msg)
+
+def errorOut(msg, ret=1):
+  """When debug is enabled, output is printed to the display.
+
+ returns nothing"""
+  type = ['WARNING', 'ERROR']
+  out = '%s: %s' % (type[ret], msg)
+  if (ret == 0):
+    print out
+  elif (ret == 1):
+    out += '\n'
+    sys.stderr.write(out)
+    cleanUp(ret)
+
+def cleanUp(ret):
+  """Do a clean and proper sys.exit()
+
+ executes sys.exit(int(ret))"""
+  sys.exit(ret)
+
+
+"""
+ Define Primary Functions
 """
 def getSSHbinary():
+  """
+  Try to locate the ssh binary using which.
+  If 'None' we found nothing
+  If 'False' it is not executeable (shouldn't happen, but why not test?)
+
+  returns str(ssh_bin)
 	"""
-	Try to locate the ssh binary using which.
-	If 'None' we found nothing
-	If 'False' it is not executeable (shouldn't happen, but why not test?)
-	
-	returns str(ssh_bin)
-	"""
-	ssh_bin = os.popen('which ssh').read().strip()
-	if (ssh_bin == ''):
-		ssh_bin = None
-	elif (os.access(ssh_bin, os.X_OK)):
-		ssh_bin = False
-	return ssh_bin
+  ssh_bin = os.popen('which ssh').read().strip()
+  if (ssh_bin == ''):
+    ssh_bin = None
+  elif (os.access(ssh_bin, os.X_OK)):
+    ssh_bin = False
+  return ssh_bin
 
 def getHostsFromFile(get_from=None, known=False, verbose=True):
- """
+  """
  Read hosts from provided file.  If no file specified,
  try to read ~/.ssh/known_hosts
 
  returns list(hosts)
  """
- debugOut('getHostsFromFile(get_from=%s)' % (get_from))
- global host_files
- if (get_from is not None):
-  if (os.access(get_from, os.R_OK)):
-   standardOut('Using user-defined host list from file: %s' % (
-     get_from), verbose)
-   host_files = [get_from]
- else:    
-  if (known):
-   # First check to see if we can even get useful data out of the 
-   # known_hosts file
-   execute = "grep HashKnownHosts %s | awk '{print $2}'" % (ssh_config)
-   debugOut(execute, '\tExecuting')
-   is_hash = os.popen(execute).read().strip()
-   debugOut(is_hash, '\tIs known_hosts hashed')
-   if (is_hash == "yes"):
-    msg = "The known_hosts files are hashed.  Please "
-    msg += "specify host or alternate file to parse at cli"
-    errorOut(msg)
-   for f in host_files:
-    try:
-     os.path.exists(f)
-    except:
-     pass
-    else:
-     host_files.remove(f)
- hosts = []
- for x in host_files:
-  execute = 'cat %s | cut -f1 -d" " | sed -e "s/,.*//g" | uniq' % (x)
-  debugOut(execute, '\tExecuting')
-  si, so, se = os.popen3(execute)
-  for h in so.readlines():
-   h = h.strip()
-   debugOut(h, '\tFound Host')
-   hosts.append(h)
- return list(hosts)
+  debugOut('getHostsFromFile(get_from=%s, known=%s, verbose=%s)' % (get_from,
+      known, verbose))
+  global host_files
+  if (get_from is not None):
+    if (os.access(get_from, os.R_OK)):
+      standardOut('Using user-defined host list from file: %s' % (
+        get_from), verbose)
+      host_files = [get_from]
+  else:    
+    if (known):
+      # First check to see if we can even get useful data out of the 
+      # known_hosts file
+      execute = "grep HashKnownHosts %s | awk '{print $2}'" % (ssh_config)
+      debugOut(execute, '\tExecuting')
+      is_hash = os.popen(execute).read().strip()
+      debugOut(is_hash, '\tIs known_hosts hashed')
+      if (is_hash == "yes"):
+        msg = "The known_hosts files are hashed.  Please "
+        msg += "specify host or alternate file to parse at cli"
+        errorOut(msg)
+      for f in host_files:
+        try:
+          os.path.exists(f)
+        except:
+          pass
+        else:
+          host_files.remove(f)
+  hosts = []
+  for x in host_files:
+    execute = 'cat %s | cut -f1 -d" " | sed -e "s/,.*//g" | uniq' % (x)
+    debugOut(execute, '\tExecuting')
+    si, so, se = os.popen3(execute)
+    for h in so.readlines():
+      h = h.strip()
+      debugOut(h, '\tFound Host')
+      hosts.append(h)
+  return list(hosts)
 
 def getIdentity(id_file=None, verbose=True):
- """Read the identity file into a variable so that it is easier to push
+  """Read the identity file into a variable so that it is easier to push
 to the external host(s)
 
  returns str(identity)"""
- debugOut('getIdentity(id_file=%s)' % (id_file))
- global id_files
- if (id_file is not None):
-  debugOut(id_file, '\tOver-riding id_files with')
-  over_ride = True
-  id_files = [os.path.abspath(os.path.expanduser(id_file))]
-  standardOut('\tReading identity from:\n\t\t%s' % (id_file), verbose)
- for id_file in id_files:
-  debugOut(id_file, '\tTrying to grab identity from')
-  if (os.access(id_file, os.R_OK)):
-   identity = os.popen('head -1 %s' % (id_file)).read().strip()
-   msg = ''
-   break
+  debugOut('getIdentity(id_file=%s, verbose=%s)' % (id_file, verbose))
+  global id_files
+  if (id_file is not None):
+    debugOut(id_file, '\tOver-riding id_files with')
+    over_ride = True
+    id_files = [os.path.abspath(os.path.expanduser(id_file))]
+    standardOut('\tReading identity from:\n\t\t%s' % (id_file), verbose)
+  for id_file in id_files:
+    debugOut(id_file, '\tTrying to grab identity from')
+    if (os.access(id_file, os.R_OK)):
+      identity = os.popen('head -1 %s' % (id_file)).read().strip()
+      msg = ''
+      break
+    else:
+      if (over_ride):
+        msg = 'Could not find/access specified file, %s' % (id_file)
+      else:
+        msg = 'Could not find/access default identity files'
+  if (msg is ''):
+    standardOut('\tFound identity:\n\t\t%s' % (id_file), verbose)
+    debugOut(identity, '\tUsing identity')
   else:
-   if (over_ride):
-    msg = 'Could not find/access specified file, %s' % (id_file)
-   else:
-    msg = 'Could not find/access default identity files'
- if (msg is ''):
-  standardOut('\tFound identity:\n\t\t%s' % (id_file), verbose)
-  debugOut(identity, '\tUsing identity')
- else:
-  errorOut(msg)
- return str(identity)
+    errorOut(msg)
+  return str(identity)
 
 def toggleAgentForwarding(on, ssh_call, end_ssh_call, verbose=True):
- """
+  """
  This function 
  """
- command = ''
- forward_option = 'ForwardAgent'
- ssh_user_config_file = os.path.join(ssh_home_dir, 'config')
- command +=  'grep -v \"%s\" %s > %s 2> /dev/null;' % (
-   forward_option, ssh_user_config_file, tmp_file)
- command += 'mv -f %s %s 2>/dev/null; chmod 600 %s 2>/dev/null;' % (
-   tmp_file, ssh_user_config_file, ssh_user_config_file)
- if (on):
-  command += 'echo \'%s yes\' >> %s 2> /dev/null; grep \"%s\" %s' % (
-    forward_option, ssh_user_config_file, forward_option, ssh_user_config_file)
- remote_command=ssh_call+command+end_ssh_call
- debugOut(remote_command, 'Executing')
- ret = os.popen(remote_command).readlines()
- if (ret):
-  if (on):
-   status = (True, 'enabled')
-  else:
-   status = (False, 'failed to disable')
-  for line in ret:
-   debugOut(line)
- else:
-  if (on):
-   status = (False, 'failed to enable')
-  else:
-   status = (True, 'disabled')
- return status
- #standardOut('\t\tAgent Forwarding: %s' % (status), verbose)
-
-
-def main():
- # Set the signals which will be handled by the signal handler
- signal.signal(signal.SIGINT, handler)
- signal.signal(signal.SIGTERM, handler)
-
- # Grap input from cli, and validate it
- (options, args) = getOptions()
- if (not options.remove and not options.old_id_file):
-  standardOut(pass_warn, options.verbose)
- standardOut('Preparing to deploy ssh key...', options.verbose)
- if (not options.userid):
-  options.userid = os.environ['USER']
- options.userid = '-l %s' % (options.userid)
-
- if (len(args) < 1 ):
-  if (options.target_file is not None):
-   # Gather up available hosts from supplied file
-   (hosts) = getHostsFromFile(options.target_file, verbose=options.verbose)
-   host_msg = '\n\t\t'.join(hosts)
-  elif (options.use_known):
-   # Gather up available hosts from known_host files, if we can
-   (hosts) = getHostsFromFile(known=options.use_known, verbose=options.verbose)
-   host_msg = '\n\t\t'.join(hosts)
-  else:
-   errorOut("No targets defined.")
- else:
-  hosts = args
-  host_msg = hosts[0]
- standardOut('\tFound host(s):\n\t\t%s' % (host_msg), options.verbose)
-
- (identity) = getIdentity(options.id_file, options.verbose)
-
- if (options.old_id_file):
-  standardOut('\tFinding old public idenity file:', options.verbose)
-  (old_identity) = getIdentity(options.old_id_file, options.verbose)
-  options.remove = True
-
-def pushToRemote(vars, hosts)
- for host in hosts:
-  ssh_call = '%s -qq %s %s \'' % (ssh_bin, options.userid, host)
-  end_ssh_call = '\''
-  standardOut('\tWorking on host: %s' % (host),
-    options.verbose)
-  if (options.forward):
-   toggleAgentForwarding(False, ssh_call, end_ssh_call, options.verbose)
   command = ''
-  try:
-   old_identity
-  except:
-   use_identity = identity
-  else:
-   use_identity = old_identity
-  # Make ssh home dir and set permissions
-  command += 'mkdir %s &> /dev/null; chmod 700 %s;' % (
-    ssh_home_dir, ssh_home_dir)
-  # Remove identity from file, set permissions
+  forward_option = 'ForwardAgent'
+  ssh_user_config_file = os.path.join(ssh_home_dir, 'config')
   command +=  'grep -v \"%s\" %s > %s 2> /dev/null;' % (
-    identity, auth_keys_file, tmp_file)
-  command += 'mv -f %s %s 2>/dev/null; chmod 600 %s 2> /dev/null;' % (
-    tmp_file, auth_keys_file, auth_keys_file)
-  if (not options.remove or options.old_id_file):
-   use_identity = identity
-   # Then append the pub identity into the authorized_keys file, and grep it
-   command += 'echo \'%s\' >> %s 2> /dev/null; chmod 600 %s; grep \"%s\" %s' % (
-     use_identity, auth_keys_file, auth_keys_file, use_identity, auth_keys_file)
+    forward_option, ssh_user_config_file, tmp_file)
+  command += 'mv -f %s %s 2>/dev/null; chmod 600 %s 2>/dev/null;' % (
+    tmp_file, ssh_user_config_file, ssh_user_config_file)
+  if (on):
+    command += 'echo \'%s yes\' >> %s 2> /dev/null; grep \"%s\" %s' % (
+      forward_option, ssh_user_config_file, forward_option, ssh_user_config_file)
   remote_command=ssh_call+command+end_ssh_call
   debugOut(remote_command, 'Executing')
   ret = os.popen(remote_command).readlines()
   if (ret):
-   if (options.old_id_file):
-    status = 'changed'
-   elif (options.remove):
-    status = 'failed to remove'
-   else:
-    status = 'deployed'
-   for line in ret:
-    debugOut(line)
+    if (on):
+      status = (True, 'enabled')
+    else:
+      status = (False, 'failed to disable')
+    for line in ret:
+      debugOut(line)
   else:
-   if (options.remove):
-    status = 'removed'
-   else:
-    status = 'failed to deploy'
-  standardOut('\t\tPublic Identity Key: %s' % (status), options.verbose)
+    if (on):
+      status = (False, 'failed to enable')
+    else:
+      status = (True, 'disabled')
+  return status
+  #standardOut('\t\tAgent Forwarding: %s' % (status), verbose)
 
-  if (options.forward):
-   if (not options.remove or options.old_id_file):
-    toggleAgentForwarding(True, ssh_call, end_ssh_call, options.verbose)
+def pushToRemote(vars, options, hosts):
+  for host in hosts:
+    ssh_call = '%s -qq %s %s \'' % (vars.ssh_bin, options.userid, host)
+    end_ssh_call = '\''
+    standardOut('\tWorking on host: %s' % (host),
+                options.verbose)
+    if (options.forward):
+      toggleAgentForwarding(False, ssh_call, end_ssh_call, options.verbose)
+    command = ''
+    try:
+      old_identity
+    except:
+      use_identity = identity
+    else:
+      use_identity = old_identity
+    # Make ssh home dir and set permissions
+    command += 'mkdir %s &> /dev/null; chmod 700 %s;' % (
+      ssh_home_dir, ssh_home_dir)
+    # Remove identity from file and set permissions
+    command +=  'grep -v \"%s\" %s > %s 2> /dev/null;' % (
+      identity, auth_keys_file, tmp_file)
+    command += 'mv -f %s %s 2>/dev/null;' % (tmp_file, auth_keys_file)
+    command += 'chmod 600 %s 2> /dev/null;' % (auth_keys_file)
+    if (not options.remove or options.old_id_file):
+      use_identity = identity
+      # Then append the pub identity into the authorized_keys file, and grep it
+      command += 'echo \'%s\' >> %s 2> /dev/null; chmod 600 %s; grep \"%s\" %s' % (
+        use_identity, auth_keys_file, auth_keys_file, use_identity, auth_keys_file)
+    remote_command=ssh_call+command+end_ssh_call
+    debugOut(remote_command, 'Executing')
+    ret = os.popen(remote_command).readlines()
+    if (ret):
+      if (options.old_id_file):
+        status = 'changed'
+      elif (options.remove):
+        status = 'failed to remove'
+      else:
+        status = 'deployed'
+      for line in ret:
+        debugOut(line)
+    else:
+      if (options.remove):
+        status = 'removed'
+      else:
+        status = 'failed to deploy'
+    standardOut('\t\tPublic Identity Key: %s' % (status), options.verbose)
+
+    if (options.forward):
+      if (not options.remove or options.old_id_file):
+        toggleAgentForwarding(True, ssh_call, end_ssh_call, options.verbose)
