@@ -175,6 +175,7 @@ to the external host(s)
  returns str(identity)"""
  debugOut('getIdentity(id_file=%s)' % (id_file))
  global id_files
+ over_ride = False
  if (id_file is not None):
   debugOut(id_file, '\tOver-riding id_files with')
   over_ride = True

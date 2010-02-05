@@ -1,0 +1,3 @@
+0.5-1
+- Added over_ride default value in getIdentity function
+- Added CHANGELOG file
