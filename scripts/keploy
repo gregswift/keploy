@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 #
 # keploy - SSH Public Key Deplyment Utility
@@ -64,7 +64,7 @@ def handler(signum, frame):
   k.cleanUp(1)
 
 def getOptions(opt_list=options_list, usage='%prog [options] [hosts]',
-      version='%prog '+version):
+      version=''):
   """
   Process and return w/ the cli options
 
