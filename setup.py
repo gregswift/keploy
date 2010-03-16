@@ -21,12 +21,12 @@ if __name__ == "__main__":
                 version = VERSION,
                 author = "Greg Swift",
                 author_email = "gregswift@gmail.com",
-                url = "https://keploy.googlecode.com/",
+                url = "https://%s.googlecode.com/" % NAME,
                 license = "GPLv3",
-		scripts = ["scripts/keploy"],
+		scripts = ["scripts/%s" % NAME],
                 package_dir = {NAME: NAME},
 		packages = [NAME],
-                data_files = [(manpath,  ["docs/keploy.1.gz"])]
+                data_files = [(manpath,  ["docs/%s.1.gz" % NAME])],
                 description = SHORT_DESC,
                 long_description = LONG_DESC
         )
