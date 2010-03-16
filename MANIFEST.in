@@ -1,0 +1,6 @@
+recursive-include bin *
+recursive-include keploy *
+include INSTALL
+include LICENSE
+include README
+include CHANGELOG
