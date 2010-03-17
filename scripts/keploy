@@ -21,6 +21,7 @@
  Import Standard Modules
 """
 from optparse import OptionParser, make_option
+from os import environ
 import signal
 
 """
@@ -31,7 +32,8 @@ import keploy as k
 """
  Define Variables
 """
-options_list = [
+USAGE = '%prog [options] [hosts]'
+OPTIONS_LIST = [
   make_option("-i", dest="id_file", default=None,
       help="Selects a file from which the public identity will be read"),
   make_option("-l", dest="login_name", default=None,
@@ -58,47 +60,58 @@ options_list = [
  Define Functions
 """
 def handler(signum, frame):
-  if (signum == 2):
+  if signum == 2:
     k.standardOut('Caught interrupt signal, cleaning up...')
-  elif (signum == 15):
+  elif signum == 15:
     k.standardOut('Cleaning up...')
   k.cleanUp(1)
 
-def getOptions(opt_list=options_list, usage='%prog [options] [hosts]',
-      version=''):
+def getOptions(opt_list, usage, version=''):
   """
   Process and return w/ the cli options
 
-  returns dict(options), list(args)
+  returns dict(opts), list(args)
   """
   k.debugOut('getOptions(opt_list=%s, usage=%s, version=%s)' % (opt_list, 
       usage, version))
   p = OptionParser(option_list=opt_list, usage=usage, version=version)
-  (options, args) = p.parse_args()
-  k.debugOut(options, 'Parsed options are')
+  (opts, args) = p.parse_args()
+  k.debugOut(opts, 'Parsed opts are')
   k.debugOut(args, 'Parsed args are')
-  return (options, args)
+  return (opts, args)
 
-def main():
+def validateOptions(vars, opts, args):
+  """
+  Process and return w/ the cli options
+
+  returns dict(opts), list(args)
+  """
+  k.debugOut('validateOptions(opts=%s, args=%s)' % (opts, args))
+  if (not opts.remove) and (not opts.old_id_file):
+    k.standardOut(k.PW_WARN, opts.verbose)
+  k.standardOut('Preparing to deploy ssh key...', opts.verbose)
+  if not opts.login_name:
+    opts.login_name = environ['USER']
+  opts.login_name = '-l %s' % (opts.login_name)
+  if opts.id_file is None:
+    opts.id_file = k.findDefaultIdentityFile(vars.id_files)
+  return (opts, args)
+
+def main(vars):
   # Set the signals which will be handled by the signal handler
   signal.signal(signal.SIGINT, handler)
   signal.signal(signal.SIGTERM, handler)
 
   # Grap input from cli, and validate it
-  (opts, args) = getOptions()
-  if (not opts.remove and not opts.old_id_file):
-    k.standardOut(pass_warn, opts.verbose)
-  k.standardOut('Preparing to deploy ssh key...', opts.verbose)
-  if (not opts.login_name):
-    opts.login_name = os.environ['USER']
-  opts.login_name = '-l %s' % (opts.login_name)
+  (opts, args) = getOptions(OPTIONS_LIST, USAGE)
+  (opts, args) = validateOptions(vars, opts, args)
 
-  if (len(args) < 1 ):
-    if (opts.target_file is not None):
+  if len(args) < 1 :
+    if opts.target_file is not None:
       # Gather up available hosts from supplied file
       (hosts) = k.getHostsFromFile(opts.target_file, verbose=opts.verbose)
       host_msg = '\n\t\t'.join(hosts)
-    elif (opts.use_known):
+    elif opts.use_known:
       # Gather up available hosts from known_host files, if we can
       (hosts) = k.getHostsFromFile(known=opts.use_known, verbose=opts.verbose)
       host_msg = '\n\t\t'.join(hosts)
@@ -111,9 +124,9 @@ def main():
 
   (identity) = k.getIdentity(opts.id_file, opts.verbose)
 
-  if (opts.old_id_file):
+  if opts.old_id_file:
     k.standardOut('\tFinding old public idenity file:', opts.verbose)
-    (old_identity) = k.getIdentity(opts.old_id_file, opts.verbose)
+    old_identity = k.getIdentity(opts.old_id_file, opts.verbose)
     opts.remove = True
 
 """
@@ -125,4 +138,4 @@ if __name__ == "__main__":
     k.errorOut('Cannot locate ssh binary')
   elif (vars.ssh_bin is False):
     k.errorOut('%s is not executable by your user' % (vars.ssh_bin))
-  main()
+  main(vars)
