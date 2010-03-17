@@ -162,7 +162,7 @@ def getHostsFromFile(get_from=None, known=False, verbose=True):
       hosts.append(h)
   return list(hosts)
 
-def getIdentity(id_file=None, verbose=True):
+def getIdentity(id_file, verbose=True):
   """
   Read the identity file into a variable so that it is easier to push
   to the external host(s)
@@ -170,29 +170,28 @@ def getIdentity(id_file=None, verbose=True):
   returns str(identity)
   """
   debugOut('getIdentity(id_file=%s, verbose=%s)' % (id_file, verbose))
-  global id_files
-  if id_file is not None:
-    debugOut(id_file, '\tOver-riding id_files with')
-    over_ride = True
-    id_files = [os.path.abspath(os.path.expanduser(id_file))]
-    standardOut('\tReading identity from:\n\t\t%s' % (id_file), verbose)
+  if os.access(id_file, os.R_OK):
+    identity = os.popen('head -1 %s' % (id_file)).read().strip()
+    standardOut('\tProcessed identity:\n\t\t%s' % (id_file), verbose)
+    debugOut(identity, '\tIdentity')
+  else:
+    errorOut('Could not find/access identity file: %s' % (id_file))
+  return str(identity)
+
+def findDefaultIdentityFile(id_files, verbose=True):
+  """
+  Return the first identity file name that is available from the provided list
+
+  returns str(id_file)
+  """
+  debugOut('findDefaultIdentity(id_files=%s, verbose=%s)' % (id_files, verbose))
   for id_file in id_files:
     debugOut(id_file, '\tTrying to grab identity from')
     if os.access(id_file, os.R_OK):
-      identity = os.popen('head -1 %s' % (id_file)).read().strip()
-      msg = ''
-      break
+      standardOut('\tFound identity file:\n\t\t%s' % (id_file), verbose)
+      return str(id_file)
     else:
-      if over_ride:
-        msg = 'Could not find/access specified file, %s' % (id_file)
-      else:
-        msg = 'Could not find/access default identity files'
-  if msg is '':
-    standardOut('\tFound identity:\n\t\t%s' % (id_file), verbose)
-    debugOut(identity, '\tUsing identity')
-  else:
-    errorOut(msg)
-  return str(identity)
+      errorOut('Could not find/access default identity files')
 
 def toggleAgentForwarding(on, ssh_call, end_ssh_call, verbose=True):
   """
