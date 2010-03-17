@@ -1,0 +1,63 @@
+\" Process this file with
+.\" groff -man -Tascii keploy.1
+.\"
+.TH keploy 1 "MARCH 2010" Linux "User Manuals"
+.SH NAME
+keploy \- Temporarily enable aotx user with a random password. 
+.SH SYNOPSIS
+enable-aotx [ -Ahkrqv ] [ -c
+.I OLD_ID_FILE
+.B ] [ -f
+.I TARGETS_FILE
+.B ] [ -i
+.I ID_FILE
+.B ] [ -l
+.I LOGIN_NAME
+.B ]
+.SH DESCRIPTION
+.B keploy
+is a python application that allows you to deploy your ssh
+public key to remote systems without having to remember all the
+little things, like file permissions.
+
+.SH OPTIONS
+.IP -A
+Toggle agent forwarding on/off for remote(s)
+.IP "-c OLD_ID_FILE"
+Specifies which old identity to replace with new idenity
+.IP "-f TARGET_FILE"
+Read list of targets from a text file, with one line per host.
+.IP "-i ID_FILE"
+Selects a file from which the public identity will be read.  The default is
+.I ~/.ssh/identity.pub
+for protocol version 1, and
+.I ~/.ssh/id_rsa.pub
+and
+.I ~/.ssh/id_dsa.pub
+for protocol version 2.
+.IP -h
+Show the help message and exit
+.IP -k
+Read list of targets from
+.I ~/.ssh/known_hosts
+files
+.IP "-l LOGIN_NAME"
+Specifies the user to log in as on the remote machine(s).
+.IP -r
+Remove primary identity from remote machine(s)
+.IP -q
+Quiet the output
+.IP -v
+Give verbose output
+.IP -y
+Accept and save new host key if visiting host for first time
+.SH BUGS
+no known bugs
+.SH AUTHOR
+Greg Swift <greg_swift@aotx.uscourts.gov>
+.SH "SEE ALSO"
+.BR ssh (1),
+.BR ssh-add (1),
+.BR ssh-agent (1),
+.BR ssh-keygen (1)
+
