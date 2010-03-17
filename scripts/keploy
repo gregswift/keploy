@@ -95,6 +95,10 @@ def validateOptions(vars, opts, args):
   opts.login_name = '-l %s' % (opts.login_name)
   if opts.id_file is None:
     opts.id_file = k.findDefaultIdentityFile(vars.id_files)
+  if opts.old_id_file:
+    opts.remove = True
+  k.debugOut(opts, 'Handled opts are')
+  k.debugOut(args, 'Handled args are')
   return (opts, args)
 
 def main(vars):
@@ -109,11 +113,11 @@ def main(vars):
   if len(args) < 1 :
     if opts.target_file is not None:
       # Gather up available hosts from supplied file
-      (hosts) = k.getHostsFromFile(opts.target_file, verbose=opts.verbose)
+      hosts = k.getHostsFromFile(opts.target_file, verbose=opts.verbose)
       host_msg = '\n\t\t'.join(hosts)
     elif opts.use_known:
       # Gather up available hosts from known_host files, if we can
-      (hosts) = k.getHostsFromFile(known=opts.use_known, verbose=opts.verbose)
+      hosts = k.getHostsFromFile(known=opts.use_known, verbose=opts.verbose)
       host_msg = '\n\t\t'.join(hosts)
     else:
       k.errorOut("No targets defined.")
@@ -122,12 +126,12 @@ def main(vars):
     host_msg = hosts[0]
   k.standardOut('\tFound host(s):\n\t\t%s' % (host_msg), opts.verbose)
 
-  (identity) = k.getIdentity(opts.id_file, opts.verbose)
+  identity = k.getIdentity(opts.id_file, opts.verbose)
 
   if opts.old_id_file:
     k.standardOut('\tFinding old public idenity file:', opts.verbose)
     old_identity = k.getIdentity(opts.old_id_file, opts.verbose)
-    opts.remove = True
+    # add an error here properly if can't find old id file?
 
 """
  Run application
