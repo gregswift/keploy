@@ -21,6 +21,7 @@
  Import Standard Modules
 """
 from optparse import OptionParser, make_option
+import signal
 
 """
  Import Local Modules
@@ -31,27 +32,27 @@ import keploy as k
  Define Variables
 """
 options_list = [
-  make_option("-i", dest="id_file",
-      help="specifies identity file", default=None),
-  make_option("-l", "--login", dest="userid", 
-      help="define userid for remote connections", default=None),
-  make_option("-f", "--file", dest="target_file",
-      help="read list of targets from file", default=None),
-  make_option("-k", "--use-known", action="store_true", dest="use_known",
-      help="read list of targets from known_hosts files", default=False),
-  make_option("-r", "--remove", action="store_true",
-      help="remove primary identity from remote(s)", default=False),
-  make_option("-c", "--change", dest="old_id_file",
-      help="replace old identity with new one on remote(s)", default=False),
-  make_option("-A", action="store_true", dest="forward",
-      help="enable/disable agent forwarding on remote", default=False),
-  make_option("-v", action="store_true", dest="verbose",
-      help="give verbose output", default=True),
-  make_option("-q", "--quiet", action="store_false", dest="verbose",
-      help="quiet the output")
+  make_option("-i", dest="id_file", default=None,
+      help="Selects a file from which the public identity will be read"),
+  make_option("-l", dest="login_name", default=None,
+      help="Specifies the user to log in as on the remote machine(s)"),
+  make_option("-f", dest="target_file", default=None,
+      help="Read list of targets from a text file, with one line per host"),
+  make_option("-k", dest="use_known", action="store_true", default=False,
+      help="Read list of targets from ~/.ssh/known_hosts files"),
+  make_option("-r", dest="remove", action="store_true", default=False,
+      help="Remove primary identity from remote machine(s)"),
+  make_option("-c", dest="old_id_file", default=False,
+      help="Specifies which old identity to replace with new idenity"),
+  make_option("-A", dest="forward", action="store_true", default=False,
+      help="Toggle agent forwarding on/off for remote(s)"),
+  make_option("-v", dest="verbose", action="store_true", default=True,
+      help="Give verbose output"),
+  make_option("-q", dest="verbose", action="store_false",
+      help="Quiet the output")
 ]
-#  make_option("-y", action="store_true", dest="accept_unknown",
-#      help="accept host key if visiting host for first time", default=False),
+#  make_option("-y", dest="accept_unknown", action="store_true", default=False,
+#      help="Accept and save new host key if visiting host for first time"),
 
 """
  Define Functions
@@ -88,9 +89,9 @@ def main():
   if (not opts.remove and not opts.old_id_file):
     k.standardOut(pass_warn, opts.verbose)
   k.standardOut('Preparing to deploy ssh key...', opts.verbose)
-  if (not opts.userid):
-    opts.userid = os.environ['USER']
-  opts.userid = '-l %s' % (opts.userid)
+  if (not opts.login_name):
+    opts.login_name = os.environ['USER']
+  opts.login_name = '-l %s' % (opts.login_name)
 
   if (len(args) < 1 ):
     if (opts.target_file is not None):
@@ -120,8 +121,8 @@ def main():
 """
 if __name__ == "__main__":
   vars = k.KeployVariables()
-  if (bin is None):
+  if (vars.ssh_bin is None):
     k.errorOut('Cannot locate ssh binary')
-  elif (bin is False):
-    k.errorOut('%s is not executable by your user' % (ssh_bin))
+  elif (vars.ssh_bin is False):
+    k.errorOut('%s is not executable by your user' % (vars.ssh_bin))
   main()
