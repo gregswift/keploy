@@ -30,6 +30,10 @@ VERSION = "0.5"
 PW_WARN = '\nNOTICE: You may be prompted for you password,\n'
 PW_WARN += 'NOTICE: this is directly from the ssh client, not keploy\n'
 
+class KeployError(Exception):
+  def __init__(self, message):
+    Exception.__init__(self, message)
+
 class KeployVariables:
   def __init__(self, user=None):
     self.ssh_bin = getSSHBinary()
