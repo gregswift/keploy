@@ -11,7 +11,7 @@ all: rpms
 
 clean:
 	rm -rf dist/ build/ rpm-build/ rpms/
-	rm -rf docs/*.gz MANIFEST *~
+	rm -rf docs/*.gz scripts/*.pyc MANIFEST *~
 
 manpage:
 	gzip -c docs/${PACKAGE}.1 > docs/${PACKAGE}.1.gz
