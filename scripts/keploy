@@ -27,7 +27,7 @@ import signal
 """
  Import Local Modules
 """
-import keploy as k
+from keploy import *
 
 """
  Define Variables
@@ -61,10 +61,10 @@ OPTIONS_LIST = [
 """
 def handler(signum, frame):
   if signum == 2:
-    k.standardOut('Caught interrupt signal, cleaning up...')
+    standardOut('Caught interrupt signal, cleaning up...')
   elif signum == 15:
-    k.standardOut('Cleaning up...')
-  k.cleanUp(1)
+    standardOut('Cleaning up...')
+  cleanUp(1)
 
 def getOptions(opt_list, usage, version=''):
   """
@@ -72,12 +72,12 @@ def getOptions(opt_list, usage, version=''):
 
   returns dict(opts), list(args)
   """
-  k.debugOut('getOptions(opt_list=%s, usage=%s, version=%s)' % (opt_list, 
+  debugOut('getOptions(opt_list=%s, usage=%s, version=%s)' % (opt_list, 
       usage, version))
   p = OptionParser(option_list=opt_list, usage=usage, version=version)
   (opts, args) = p.parse_args()
-  k.debugOut(opts, 'Parsed opts are')
-  k.debugOut(args, 'Parsed args are')
+  debugOut(opts, 'Parsed opts are')
+  debugOut(args, 'Parsed args are')
   return (opts, args)
 
 def validateOptions(vars, opts, args):
@@ -86,19 +86,19 @@ def validateOptions(vars, opts, args):
 
   returns dict(opts), list(args)
   """
-  k.debugOut('validateOptions(opts=%s, args=%s)' % (opts, args))
+  debugOut('validateOptions(opts=%s, args=%s)' % (opts, args))
   if (not opts.remove) and (not opts.old_id_file):
-    k.standardOut(k.PW_WARN, opts.verbose)
-  k.standardOut('Preparing to deploy ssh key...', opts.verbose)
+    standardOut(PW_WARN, opts.verbose)
+  standardOut('Preparing to deploy ssh key...', opts.verbose)
   if not opts.login_name:
     opts.login_name = environ['USER']
   opts.login_name = '-l %s' % (opts.login_name)
   if opts.id_file is None:
-    opts.id_file = k.findDefaultIdentityFile(vars.id_files)
+    opts.id_file = findDefaultIdentityFile(vars.id_files)
   if opts.old_id_file:
     opts.remove = True
-  k.debugOut(opts, 'Handled opts are')
-  k.debugOut(args, 'Handled args are')
+  debugOut(opts, 'Handled opts are')
+  debugOut(args, 'Handled args are')
   return (opts, args)
 
 def main(vars):
@@ -112,34 +112,89 @@ def main(vars):
 
   if len(args) < 1 :
     if opts.target_file is not None:
-      # Gather up available hosts from supplied file
-      hosts = k.getHostsFromFile(opts.target_file, verbose=opts.verbose)
-      host_msg = '\n\t\t'.join(hosts)
+      host_file = opts.target_file
     elif opts.use_known:
-      # Gather up available hosts from known_host files, if we can
-      hosts = k.getHostsFromFile(known=opts.use_known, verbose=opts.verbose)
-      host_msg = '\n\t\t'.join(hosts)
+      if isHostsFileHashed():
+        msg = "The known_hosts files are hashed.  Please "
+        msg += "specify host or alternate file to parse at cli"
+        errorOut(msg)
+      host_file = vars.host_files
     else:
-      k.errorOut("No targets defined.")
+      errorOut("No targets defined.")
+    # Gather up available hosts from supplied file
+    try:
+      hosts = getHostsFromFile(opts.host_file, verbose=opts.verbose)
+    except KeployError, msg:
+      errorOut(msg)
+    host_msg = '\n\t\t'.join(hosts)
   else:
     hosts = args
     host_msg = hosts[0]
-  k.standardOut('\tFound host(s):\n\t\t%s' % (host_msg), opts.verbose)
+  standardOut('\tFound host(s):\n\t\t%s' % (host_msg), opts.verbose)
 
-  identity = k.getIdentity(opts.id_file, opts.verbose)
+  identity = getIdentity(opts.id_file, opts.verbose)
 
   if opts.old_id_file:
-    k.standardOut('\tFinding old public idenity file:', opts.verbose)
-    old_identity = k.getIdentity(opts.old_id_file, opts.verbose)
+    standardOut('\tFinding old public idenity file:', opts.verbose)
+    old_identity = getIdentity(opts.old_id_file, opts.verbose)
     # add an error here properly if can't find old id file?
+
+  for host in hosts:
+    ssh_call = '%s -qq %s %s \'' % (ssh_bin, options.userid, host)
+    end_ssh_call = '\''
+    standardOut('\tWorking on host: %s' % (host), options.verbose)
+    if (options.forward):
+     toggleAgentForwarding(False, ssh_call, end_ssh_call, options.verbose)
+    command = ''
+    try:
+     old_identity
+    except:
+     use_identity = identity
+    else:
+     use_identity = old_identity
+    # Make ssh home dir and set permissions
+    command += 'mkdir %s &> /dev/null; chmod 700 %s;' % (
+      ssh_home_dir, ssh_home_dir)
+    # Remove identity from file, set permissions
+    command +=  'grep -v \"%s\" %s > %s 2> /dev/null;' % (
+      identity, auth_keys_file, tmp_file)
+    command += 'mv -f %s %s 2>/dev/null; chmod 600 %s 2> /dev/null;' % (
+      tmp_file, auth_keys_file, auth_keys_file)
+    if (not options.remove or options.old_id_file):
+     use_identity = identity
+     # Then append the pub identity into the authorized_keys file, and grep it
+     command += 'echo \'%s\' >> %s 2> /dev/null; chmod 600 %s; grep \"%s\" %s' % (
+       use_identity, auth_keys_file, auth_keys_file, use_identity, auth_keys_file)
+    remote_command=ssh_call+command+end_ssh_call
+    debugOut(remote_command, 'Executing')
+    ret = os.popen(remote_command).readlines()
+    if (ret):
+     if (options.old_id_file):
+      status = 'changed'
+     elif (options.remove):
+      status = 'failed to remove'
+     else:
+      status = 'deployed'
+     for line in ret:
+      debugOut(line)
+    else:
+     if (options.remove):
+      status = 'removed'
+     else:
+      status = 'failed to deploy'
+    standardOut('\t\tPublic Identity Key: %s' % (status), options.verbose)
+
+    if (options.forward):
+     if (not options.remove or options.old_id_file):
+      toggleAgentForwarding(True, ssh_call, end_ssh_call, options.verbose)
 
 """
  Run application
 """
 if __name__ == "__main__":
-  vars = k.KeployVariables()
+  vars = KeployVariables()
   if (vars.ssh_bin is None):
-    k.errorOut('Cannot locate ssh binary')
+    errorOut('Cannot locate ssh binary')
   elif (vars.ssh_bin is False):
-    k.errorOut('%s is not executable by your user' % (vars.ssh_bin))
+    errorOut('%s is not executable by your user' % (vars.ssh_bin))
   main(vars)

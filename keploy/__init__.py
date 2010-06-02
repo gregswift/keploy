@@ -25,33 +25,28 @@ import sys
  Define Variables
 """
 DEBUG = True
-VERSION = "0.5"
+VERSION = "1.0"
 
 PW_WARN = '\nNOTICE: You may be prompted for you password,\n'
 PW_WARN += 'NOTICE: this is directly from the ssh client, not keploy\n'
 
+SSH_BIN = getSSHBinary()
+SSH_DIR = '~/.ssh'
+SSH_LOCAL_DIR = os.path.expanduser(SSH_DIR)
+SSH_CONFIGS = ('/etc/ssh/ssh_config', os.path.join(SSH_LOCAL_DIR,'config'))
+# Local Files
+ID_FILES = (os.path.join(SSH_LOCAL_DIR, 'id_rsa.pub'),
+    os.path.join(SSH_LOCAL_DIR, 'id_dsa.pub'),
+    os.path.join(SSH_LOCAL_DIR, 'identity.pub'))
+HOST_FILES = [os.path.join(SSH_LOCAL_DIR, 'known_hosts'),
+    os.path.join(SSH_LOCAL_DIR, 'known_hosts2')]
+# Files on remote host
+TMP_FILE = os.path.join(SSH_DIR, 'keyploy.tmp')
+AUTH_KEYS_FILE = os.path.join(SSH_DIR, 'authorized_keys')
+
 class KeployError(Exception):
   def __init__(self, message):
     Exception.__init__(self, message)
-
-class KeployVariables:
-  def __init__(self, user=None):
-    self.ssh_bin = getSSHBinary()
-    self.ssh_config = '/etc/ssh/ssh_config'
-    if (not os.access(self.ssh_config, os.R_OK)):
-      self.ssh_config = None
-    self.ssh_home_dir = os.path.expanduser('~/.ssh')
-    self.tmp_file = os.path.join(self.ssh_home_dir, 'keyploy.tmp')
-    self.id_files = (os.path.join(self.ssh_home_dir, 'id_rsa.pub'),
-                     os.path.join(self.ssh_home_dir, 'id_dsa.pub'),
-                     os.path.join(self.ssh_home_dir, 'identity.pub'))
-    self.host_files = [os.path.join(self.ssh_home_dir, 'known_hosts'),
-                       os.path.join(self.ssh_home_dir, 'known_hosts2')]
-    self.auth_keys_file = os.path.join(self.ssh_home_dir, 'authorized_keys')
-    self.user = user
-
-  def set(self, name, value):
-    setattr(self, name, value)
 
 """
  Define Output Functions and cleanUp Function
@@ -113,7 +108,7 @@ def getSSHBinary():
   If 'False' it is not executeable (should not happen, but why not test?)
 
   returns str(ssh_bin)
-	"""
+  """
   ssh_bin = os.popen('/usr/bin/which ssh').read().strip()
   if ssh_bin == '':
     ssh_bin = None
@@ -121,52 +116,47 @@ def getSSHBinary():
     ssh_bin = False
   return ssh_bin
 
-def getHostsFromFile(get_from=None, known=False, verbose=True):
+def isHostsFileHashed(verbose=False):
   """
-  Read hosts from provided file.  If no file specified,
-  try to read ~/.ssh/known_hosts
+  Check to see if we can even get useful data out of the known_hosts files
+
+  returns bool()
+  """
+  for config in SSH_CONFIGS:
+    if (not os.access(config, os.R_OK)):
+      raise KeployError('Unable to read config file %s' % (config))
+  execute = "grep HashKnownHosts %s | awk '{print $2}'" % (config)
+  debugOut(execute, '\tExecuting', verbose)
+  is_hash = os.popen(execute).read().strip()
+  debugOut(is_hash, '\tIs known_hosts hashed', verbose)
+  if is_hash == "yes":
+    return True
+  return False
+
+def getHostsFromFile(host_files, verbose=False):
+  """
+  Read hosts from provided file(s).
 
   returns list(hosts)
   """
-  debugOut('getHostsFromFile(get_from=%s, known=%s, verbose=%s)' % (get_from,
-      known, verbose))
-  global host_files
-  if get_from is not None:
-    if os.access(get_from, os.R_OK):
-      standardOut('Using user-defined host list from file: %s' % (
-        get_from), verbose)
-      host_files = [get_from]
-  else:    
-    if known:
-      # First check to see if we can even get useful data out of the 
-      # known_hosts file
-      execute = "grep HashKnownHosts %s | awk '{print $2}'" % (ssh_config)
-      debugOut(execute, '\tExecuting')
-      is_hash = os.popen(execute).read().strip()
-      debugOut(is_hash, '\tIs known_hosts hashed')
-      if is_hash == "yes":
-        msg = "The known_hosts files are hashed.  Please "
-        msg += "specify host or alternate file to parse at cli"
-        errorOut(msg)
-      for f in host_files:
-        try:
-          os.path.exists(f)
-        except:
-          pass
-        else:
-          host_files.remove(f)
+  debugOut('getHostsFromFile(host_files=%s, verbose=%s)' % (host_files,
+      verbose))
+  if not isinstance(host_files, (list, tuple)):
+    host_files = [host_files]
   hosts = []
-  for x in host_files:
-    execute = 'cat %s | cut -f1 -d" " | sed -e "s/,.*//g" | uniq' % (x)
-    debugOut(execute, '\tExecuting')
-    si, so, se = os.popen3(execute)
-    for h in so.readlines():
-      h = h.strip()
-      debugOut(h, '\tFound Host')
-      hosts.append(h)
+  for host_file in host_files:
+    if not os.access(host_file, os.R_OK):
+      raise KeployError, 'Unable to parse hosts from file: %s' % (host_file)
+    for line in open(host_file).readlines():
+      host = line.strip().split()[0]
+      if ',' in host:
+        host = host.split(',')[0]
+      if host not in hosts:
+        debugOut(host, '\tFound Host')
+        hosts.append(host)
   return list(hosts)
 
-def getIdentity(id_file, verbose=True):
+def getIdentity(id_file, verbose=False):
   """
   Read the identity file into a variable so that it is easier to push
   to the external host(s)
@@ -175,14 +165,13 @@ def getIdentity(id_file, verbose=True):
   """
   debugOut('getIdentity(id_file=%s, verbose=%s)' % (id_file, verbose))
   if os.access(id_file, os.R_OK):
-    identity = os.popen('head -1 %s' % (id_file)).read().strip()
+    identity = open(id_file).readlines()[0].strip()
     standardOut('\tProcessed identity:\n\t\t%s' % (id_file), verbose)
     debugOut(identity, '\tIdentity')
-  else:
-    errorOut('Could not find/access identity file: %s' % (id_file))
-  return str(identity)
+    return str(identity)
+  raise KeployError('Could not find/access identity file: %s' % (id_file))
 
-def findDefaultIdentityFile(id_files, verbose=True):
+def findDefaultIdentityFile(id_files, verbose=False):
   """
   Return the first identity file name that is available from the provided list
 
@@ -194,10 +183,9 @@ def findDefaultIdentityFile(id_files, verbose=True):
     if os.access(id_file, os.R_OK):
       standardOut('\tFound identity file:\n\t\t%s' % (id_file), verbose)
       return str(id_file)
-    else:
-      errorOut('Could not find/access default identity files')
+  raise KeployError('Could not find/access default identity files')
 
-def toggleAgentForwarding(on, ssh_call, end_ssh_call, verbose=True):
+def toggleAgentForwarding(on, ssh_call, end_ssh_call, verbose=False):
   """
   This function checks the state of ForwardAgent in remote system's
   ~/.ssh/config file, and toggles it, on/off as necessary
