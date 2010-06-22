@@ -2,7 +2,7 @@
 
 Name:           keploy
 Version:        0.6
-Release:        2%{?dist}
+Release:        2
 Summary:        cli ssh public key deployment utility
 
 Group:          Applications/Internet
@@ -46,6 +46,7 @@ rm -rf %{buildroot}
 %changelog
 * Tue Jun 22 2010 Greg Swift <gregswift@gmail.com> 0.6-2
 - Fixed arch to be noarch
+- Removed dist from release
 
 * Tue Jun 22 2010 Greg Swift <gregswift@gmail.com> 0.6-1
 - new version
