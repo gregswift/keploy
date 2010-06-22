@@ -2,7 +2,7 @@
 
 Name:           keploy
 Version:        0.6
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        cli ssh public key deployment utility
 
 Group:          Applications/Internet
@@ -10,6 +10,7 @@ License:        GPLv3
 URL:            http://keploy.googlecode.com
 Source0:        http://keploy.googlecode.com/files/%{name}-%{version}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+BuildArch:      noarch
 
 BuildRequires:  python-setuptools
 Requires:       openssh-clients
@@ -43,6 +44,9 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Tue Jun 22 2010 Greg Swift <gregswift@gmail.com> 0.6-2
+- Fixed arch to be noarch
+
 * Tue Jun 22 2010 Greg Swift <gregswift@gmail.com> 0.6-1
 - new version
 
