@@ -5,7 +5,7 @@
 .SH NAME
 keploy \- Temporarily enable aotx user with a random password. 
 .SH SYNOPSIS
-enable-aotx [ -Ahkrqv ] [ -c
+enable-aotx [ -Ahkrqv ] [ -o
 .I OLD_ID_FILE
 .B ] [ -f
 .I TARGETS_FILE
@@ -23,7 +23,7 @@ little things, like file permissions.
 .SH OPTIONS
 .IP -A
 Toggle agent forwarding on/off for remote(s)
-.IP "-c OLD_ID_FILE"
+.IP "-o OLD_ID_FILE"
 Specifies which old identity to replace with new idenity
 .IP "-f TARGET_FILE"
 Read list of targets from a text file, with one line per host.
@@ -54,7 +54,7 @@ Accept and save new host key if visiting host for first time
 .SH BUGS
 no known bugs
 .SH AUTHOR
-Greg Swift <greg_swift@aotx.uscourts.gov>
+Greg Swift <gregswift@gmail.com>
 .SH "SEE ALSO"
 .BR ssh (1),
 .BR ssh-add (1),
