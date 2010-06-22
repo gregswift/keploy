@@ -114,8 +114,8 @@ def validateOptions(opts, args):
 
 def main():
   # Set the interrupt and terminate signals into the handler
-  #signal.signal(signal.SIGINT, handler)
-  #signal.signal(signal.SIGTERM, handler)
+  signal.signal(signal.SIGINT, handler)
+  signal.signal(signal.SIGTERM, handler)
 
   (opts, args) = getOptions(OPTIONS_LIST, USAGE)
   (opts, args) = validateOptions(opts, args)
