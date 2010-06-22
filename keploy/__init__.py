@@ -18,8 +18,11 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-import signal
 import sys
+
+class KeployError(Exception):
+  def __init__(self, message, code=255):
+    Exception.__init__(self, message, code)
 
 """
  Define Variables
@@ -30,10 +33,16 @@ VERSION = "1.0"
 PW_WARN = '\nNOTICE: You may be prompted for you password,\n'
 PW_WARN += 'NOTICE: this is directly from the ssh client, not keploy\n'
 
-SSH_BIN = getSSHBinary()
+SSH_BIN = os.popen('/usr/bin/which ssh 2> /dev/null').read().strip()
+if SSH_BIN == '':
+  raise KeployError, ('SSH binary not locatable by /usr/bin/which', 100)
+elif not os.access(SSH_BIN, os.X_OK):
+  raise KeployError, ('SSH Binary not executable by your user', 101)
 SSH_DIR = '~/.ssh'
 SSH_LOCAL_DIR = os.path.expanduser(SSH_DIR)
-SSH_CONFIGS = ('/etc/ssh/ssh_config', os.path.join(SSH_LOCAL_DIR,'config'))
+SSH_CONFIGS = ('/etc/ssh/ssh_config', os.path.join(SSH_DIR,'config'))
+SSH_START_CALL = SSH_BIN+' -qq %s %s \''
+SSH_END_CALL = '\''
 # Local Files
 ID_FILES = (os.path.join(SSH_LOCAL_DIR, 'id_rsa.pub'),
     os.path.join(SSH_LOCAL_DIR, 'id_dsa.pub'),
@@ -43,10 +52,6 @@ HOST_FILES = [os.path.join(SSH_LOCAL_DIR, 'known_hosts'),
 # Files on remote host
 TMP_FILE = os.path.join(SSH_DIR, 'keyploy.tmp')
 AUTH_KEYS_FILE = os.path.join(SSH_DIR, 'authorized_keys')
-
-class KeployError(Exception):
-  def __init__(self, message):
-    Exception.__init__(self, message)
 
 """
  Define Output Functions and cleanUp Function
@@ -101,21 +106,6 @@ def cleanUp(ret):
 """
  Define Primary Functions
 """
-def getSSHBinary():
-  """
-  Try to locate the ssh binary using which.
-  If 'None' we found nothing
-  If 'False' it is not executeable (should not happen, but why not test?)
-
-  returns str(ssh_bin)
-  """
-  ssh_bin = os.popen('/usr/bin/which ssh').read().strip()
-  if ssh_bin == '':
-    ssh_bin = None
-  elif not os.access(ssh_bin, os.X_OK):
-    ssh_bin = False
-  return ssh_bin
-
 def isHostsFileHashed(verbose=False):
   """
   Check to see if we can even get useful data out of the known_hosts files
@@ -124,7 +114,7 @@ def isHostsFileHashed(verbose=False):
   """
   for config in SSH_CONFIGS:
     if (not os.access(config, os.R_OK)):
-      raise KeployError('Unable to read config file %s' % (config))
+      raise KeployError, 'Unable to read config file %s' % (config)
   execute = "grep HashKnownHosts %s | awk '{print $2}'" % (config)
   debugOut(execute, '\tExecuting', verbose)
   is_hash = os.popen(execute).read().strip()
@@ -185,24 +175,24 @@ def findDefaultIdentityFile(id_files, verbose=False):
       return str(id_file)
   raise KeployError('Could not find/access default identity files')
 
-def toggleAgentForwarding(on, ssh_call, end_ssh_call, verbose=False):
+def toggleAgentForwarding(on, host, login_name, verbose=False):
   """
   This function checks the state of ForwardAgent in remote system's
   ~/.ssh/config file, and toggles it, on/off as necessary
 
   returns bool(status)
   """
+  ssh_call = SSH_START_CALL % (login_name, host)
   command = ''
   forward_option = 'ForwardAgent'
-  ssh_user_config_file = os.path.join(ssh_home_dir, 'config')
   command +=  'grep -v \"%s\" %s > %s 2> /dev/null;' % (
-    forward_option, ssh_user_config_file, tmp_file)
+    forward_option, SSH_CONFIGS[1], TMP_FILE)
   command += 'mv -f %s %s 2>/dev/null; chmod 600 %s 2>/dev/null;' % (
-    tmp_file, ssh_user_config_file, ssh_user_config_file)
+    TMP_FILE, SSH_CONFIGS[1], SSH_CONFIGS[1])
   if on:
     command += 'echo \'%s yes\' >> %s 2> /dev/null; grep \"%s\" %s' % (
-      forward_option, ssh_user_config_file, forward_option, ssh_user_config_file)
-  remote_command=ssh_call+command+end_ssh_call
+      forward_option, SSH_CONFIGS[1], forward_option, SSH_CONFIGS[1])
+  remote_command=ssh_call+command+SSH_END_CALL
   debugOut(remote_command, 'Executing')
   ret = os.popen(remote_command).readlines()
   if ret:
@@ -220,53 +210,52 @@ def toggleAgentForwarding(on, ssh_call, end_ssh_call, verbose=False):
   return status
   #standardOut('\t\tAgent Forwarding: %s' % (status), verbose)
 
-def pushToRemote(vars, options, hosts):
+def pushToRemoteHosts(hosts, identity, login_name, forward=False,
+    remove_old=False, old_identity=None, verbose=False):
+  if not isinstance(hosts, (tuple, list)):
+    hosts = list(hosts)
   for host in hosts:
-    ssh_call = '%s -qq %s %s \'' % (vars.ssh_bin, options.login_name, host)
-    end_ssh_call = '\''
-    standardOut('\tWorking on host: %s' % (host),
-                options.verbose)
-    if options.forward:
-      toggleAgentForwarding(False, ssh_call, end_ssh_call, options.verbose)
-    command = ''
-    try:
-      old_identity
-    except:
-      use_identity = identity
-    else:
-      use_identity = old_identity
-    # Make ssh home dir and set permissions
-    command += 'mkdir %s &> /dev/null; chmod 700 %s;' % (
-      ssh_home_dir, ssh_home_dir)
-    # Remove identity from file and set permissions
-    command +=  'grep -v \"%s\" %s > %s 2> /dev/null;' % (
-      identity, auth_keys_file, tmp_file)
-    command += 'mv -f %s %s 2>/dev/null;' % (tmp_file, auth_keys_file)
-    command += 'chmod 600 %s 2> /dev/null;' % (auth_keys_file)
-    if not options.remove or options.old_id_file:
-      use_identity = identity
-      # Then append the pub identity into the authorized_keys file, and grep it
-      command += 'echo \'%s\' >> %s 2> /dev/null; chmod 600 %s; grep \"%s\" %s' % (
-        use_identity, auth_keys_file, auth_keys_file, use_identity, auth_keys_file)
-    remote_command=ssh_call+command+end_ssh_call
-    debugOut(remote_command, 'Executing')
-    ret = os.popen(remote_command).readlines()
+    command = buildSSHPushCommand(host, identity, login_name, forward,
+        remove_old, old_identity, verbose)
+    debugOut(command, 'Executing')
+    ret = os.popen(command).readlines()
     if ret:
-      if options.old_id_file:
+      if old_identity:
         status = 'changed'
-      elif options.remove:
+      elif remove_old:
         status = 'failed to remove'
       else:
         status = 'deployed'
       for line in ret:
         debugOut(line)
     else:
-      if options.remove:
+      if remove_old:
         status = 'removed'
       else:
         status = 'failed to deploy'
-    standardOut('\t\tPublic Identity Key: %s' % (status), options.verbose)
+    standardOut('\t\tPublic Identity Key: %s' % (status), verbose)
 
-    if options.forward:
-      if (not options.remove) or (options.old_id_file):
-        toggleAgentForwarding(True, ssh_call, end_ssh_call, options.verbose)
+    if forward and not remove_old:
+      toggleAgentForwarding(True, host, login_name, verbose)
+
+def buildSSHPushCommand(host, identity, login_name, forward=False,
+      remove_old=False, old_identity=None, verbose=False):
+    ssh_call = SSH_START_CALL % (login_name, host)
+    standardOut('\tWorking on host: %s' % (host), verbose)
+    if forward:
+      toggleAgentForwarding(False, host, login_name, verbose)
+    command = ''
+    if old_identity is None:
+      old_identity = identity
+    # Make ssh home dir and set permissions
+    command += 'mkdir %s &> /dev/null; chmod 700 %s;' % (SSH_DIR, SSH_DIR)
+    # Remove identity from file and set permissions
+    command +=  'grep -v \"%s\" %s > %s 2> /dev/null;' % (
+      old_identity, AUTH_KEYS_FILE, TMP_FILE)
+    command += 'mv -f %s %s 2>/dev/null;' % (TMP_FILE, AUTH_KEYS_FILE)
+    command += 'chmod 600 %s 2> /dev/null;' % (AUTH_KEYS_FILE)
+    if not remove_old:
+      # Then append the pub identity into the authorized_keys file, and grep it
+      command += 'echo \'%s\' >> %s 2> /dev/null; chmod 600 %s; grep \"%s\" %s' % (
+        identity, AUTH_KEYS_FILE, AUTH_KEYS_FILE, identity, AUTH_KEYS_FILE)
+    return ssh_call+command+SSH_END_CALL
