@@ -27,7 +27,12 @@ import signal
 """
  Import Local Modules
 """
-from keploy import *
+try:
+  from keploy import *
+except:
+  from sys import stderr, exit
+  stderr.write('Error: Unable to import keploy library.\n')
+  exit(255)
 
 """
  Define Variables
@@ -44,8 +49,8 @@ OPTIONS_LIST = [
       help="Read list of targets from ~/.ssh/known_hosts files"),
   make_option("-r", dest="remove", action="store_true", default=False,
       help="Remove primary identity from remote machine(s)"),
-  make_option("-c", dest="old_id_file", default=False,
-      help="Specifies which old identity to replace with new idenity"),
+  make_option("-o", dest="old_id_file", default=False,
+      help="Specifies which old identity to replace with new identity"),
   make_option("-A", dest="forward", action="store_true", default=False,
       help="Toggle agent forwarding on/off for remote(s)"),
   make_option("-v", dest="verbose", action="store_true", default=True,
@@ -61,9 +66,11 @@ OPTIONS_LIST = [
 """
 def handler(signum, frame):
   if signum == 2:
-    standardOut('Caught interrupt signal, cleaning up...')
+    standardOut('Caught interrupt signal, exiting...')
   elif signum == 15:
-    standardOut('Cleaning up...')
+    #standardOut('Cleaning up...')
+    # This is more of a place holder, no reason to print extra text
+    pass
   cleanUp(1)
 
 def getOptions(opt_list, usage, version=''):
@@ -80,7 +87,7 @@ def getOptions(opt_list, usage, version=''):
   debugOut(args, 'Parsed args are')
   return (opts, args)
 
-def validateOptions(vars, opts, args):
+def validateOptions(opts, args):
   """
   Process and return w/ the cli options
 
@@ -94,38 +101,34 @@ def validateOptions(vars, opts, args):
     opts.login_name = environ['USER']
   opts.login_name = '-l %s' % (opts.login_name)
   if opts.id_file is None:
-    opts.id_file = findDefaultIdentityFile(vars.id_files)
+    opts.id_file = findDefaultIdentityFile(ID_FILES)
   if opts.old_id_file:
     opts.remove = True
+  if opts.use_known and isHostsFileHashed():
+    msg = "The known_hosts files are hashed.  Please "
+    msg += "specify host or alternate file to parse at cli"
+    raise KeployError, (msg, 50)
   debugOut(opts, 'Handled opts are')
   debugOut(args, 'Handled args are')
   return (opts, args)
 
-def main(vars):
-  # Set the signals which will be handled by the signal handler
-  signal.signal(signal.SIGINT, handler)
-  signal.signal(signal.SIGTERM, handler)
+def main():
+  # Set the interrupt and terminate signals into the handler
+  #signal.signal(signal.SIGINT, handler)
+  #signal.signal(signal.SIGTERM, handler)
 
-  # Grap input from cli, and validate it
   (opts, args) = getOptions(OPTIONS_LIST, USAGE)
-  (opts, args) = validateOptions(vars, opts, args)
+  (opts, args) = validateOptions(opts, args)
 
   if len(args) < 1 :
     if opts.target_file is not None:
       host_file = opts.target_file
     elif opts.use_known:
-      if isHostsFileHashed():
-        msg = "The known_hosts files are hashed.  Please "
-        msg += "specify host or alternate file to parse at cli"
-        errorOut(msg)
-      host_file = vars.host_files
+      host_file = HOST_FILES
     else:
-      errorOut("No targets defined.")
+      raise KeployError, "No targets defined."
     # Gather up available hosts from supplied file
-    try:
-      hosts = getHostsFromFile(opts.host_file, verbose=opts.verbose)
-    except KeployError, msg:
-      errorOut(msg)
+    hosts = getHostsFromFile(opts.host_file, verbose=opts.verbose)
     host_msg = '\n\t\t'.join(hosts)
   else:
     hosts = args
@@ -135,66 +138,19 @@ def main(vars):
   identity = getIdentity(opts.id_file, opts.verbose)
 
   if opts.old_id_file:
-    standardOut('\tFinding old public idenity file:', opts.verbose)
+    standardOut('\tFinding old public identity file:', opts.verbose)
     old_identity = getIdentity(opts.old_id_file, opts.verbose)
-    # add an error here properly if can't find old id file?
+  else:
+    old_identity = None
 
-  for host in hosts:
-    ssh_call = '%s -qq %s %s \'' % (ssh_bin, options.userid, host)
-    end_ssh_call = '\''
-    standardOut('\tWorking on host: %s' % (host), options.verbose)
-    if (options.forward):
-     toggleAgentForwarding(False, ssh_call, end_ssh_call, options.verbose)
-    command = ''
-    try:
-     old_identity
-    except:
-     use_identity = identity
-    else:
-     use_identity = old_identity
-    # Make ssh home dir and set permissions
-    command += 'mkdir %s &> /dev/null; chmod 700 %s;' % (
-      ssh_home_dir, ssh_home_dir)
-    # Remove identity from file, set permissions
-    command +=  'grep -v \"%s\" %s > %s 2> /dev/null;' % (
-      identity, auth_keys_file, tmp_file)
-    command += 'mv -f %s %s 2>/dev/null; chmod 600 %s 2> /dev/null;' % (
-      tmp_file, auth_keys_file, auth_keys_file)
-    if (not options.remove or options.old_id_file):
-     use_identity = identity
-     # Then append the pub identity into the authorized_keys file, and grep it
-     command += 'echo \'%s\' >> %s 2> /dev/null; chmod 600 %s; grep \"%s\" %s' % (
-       use_identity, auth_keys_file, auth_keys_file, use_identity, auth_keys_file)
-    remote_command=ssh_call+command+end_ssh_call
-    debugOut(remote_command, 'Executing')
-    ret = os.popen(remote_command).readlines()
-    if (ret):
-     if (options.old_id_file):
-      status = 'changed'
-     elif (options.remove):
-      status = 'failed to remove'
-     else:
-      status = 'deployed'
-     for line in ret:
-      debugOut(line)
-    else:
-     if (options.remove):
-      status = 'removed'
-     else:
-      status = 'failed to deploy'
-    standardOut('\t\tPublic Identity Key: %s' % (status), options.verbose)
-
-    if (options.forward):
-     if (not options.remove or options.old_id_file):
-      toggleAgentForwarding(True, ssh_call, end_ssh_call, options.verbose)
+  pushToRemoteHosts(hosts, identity, opts.login_name, opts.forward,
+      opts.remove, old_identity, opts.verbose)
 
 """
  Run application
 """
 if __name__ == "__main__":
-  vars = KeployVariables()
-  if (vars.ssh_bin is None):
-    errorOut('Cannot locate ssh binary')
-  elif (vars.ssh_bin is False):
-    errorOut('%s is not executable by your user' % (vars.ssh_bin))
-  main(vars)
+  try:
+    main()
+  except KeployError, data:
+    errorOut(data[0], data[1])
