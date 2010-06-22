@@ -128,7 +128,7 @@ def main():
     else:
       raise KeployError, "No targets defined."
     # Gather up available hosts from supplied file
-    hosts = getHostsFromFile(opts.host_file, verbose=opts.verbose)
+    hosts = getHostsFromFile(host_file, verbose=opts.verbose)
     host_msg = '\n\t\t'.join(hosts)
   else:
     hosts = args
