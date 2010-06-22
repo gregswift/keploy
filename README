@@ -1,0 +1,39 @@
+keploy 0.3
+===============
+
+keploy - SSH Public Key Deplyment Utility
+Copyright © 2007 bluEmber Solutions, LLC
+Written by: Greg Swift <gswift@bluember.net>
+License: General Public License (GPL) v3
+
+Description
+===============
+
+keploy is a utility to distribute and remove your public ssh key to a single
+or large number of systems with the least amount of effort possible.
+
+Usage
+===============
+
+* To deploy your default public key (~/.ssh/{id_rsa,id_dsa,identity}.pub) to all
+  hosts in your known_hosts file:
+     # keploy -k
+
+* To deploy your default pulic key to host remote.host.com:
+     # kepoy remote.host.com
+
+* To deploy your default public key to remote.host.com as user bob and
+  enable Agent Forwarding:
+     # keploy -A --user=bob remote.host.com
+
+* To replace your old key (now ~/.ssh/id_rsa.old.pub) with your new default 
+  public key onto all hosts in the file "~/myhosts":
+     # keploy -c ~/.ssh/id_rsa.old.pub -f ~/myhosts
+
+* Remove your public key from all boxes in your known_hosts file,
+  and turn off Agent Forwarding:
+     # keploy -r -k -A
+
+How to report bugs
+===============
+Visit http://code.google.com/p/keploy and goto the 'Issues' tab

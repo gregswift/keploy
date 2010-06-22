@@ -1,0 +1,13 @@
+Release 0.6 - June 22nd, 2010 - Greg Swift 
+- Re-wrote the entire application to be module based
+- Changed cli switch for old identity file from -c to -o
+- Restructured project to utilize distutils
+- Re-wrote layout of changelog file
+
+Release 0.5 - Feb 4th, 2010 - Greg Swift
+- Fix bug #1 - keploy properly error on inaccessible id file
+- Added over_ride default value in getIdentity function
+- Added CHANGELOG file
+
+Release 0.4 - Mar 06, 2008 - Greg Swift
+- First proper release of the code

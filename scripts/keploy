@@ -1,0 +1,156 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+#
+# keploy - SSH Public Key Deplyment Utility
+# Copyright © 2007 Greg Swift gregswift@gmail.com
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""
+ Import Standard Modules
+"""
+from optparse import OptionParser, make_option
+from os import environ
+import signal
+
+"""
+ Import Local Modules
+"""
+try:
+  from keploy import *
+except:
+  from sys import stderr, exit
+  stderr.write('Error: Unable to import keploy library.\n')
+  exit(255)
+
+"""
+ Define Variables
+"""
+USAGE = '%prog [options] [hosts]'
+OPTIONS_LIST = [
+  make_option("-i", dest="id_file", default=None,
+      help="Selects a file from which the public identity will be read"),
+  make_option("-l", dest="login_name", default=None,
+      help="Specifies the user to log in as on the remote machine(s)"),
+  make_option("-f", dest="target_file", default=None,
+      help="Read list of targets from a text file, with one line per host"),
+  make_option("-k", dest="use_known", action="store_true", default=False,
+      help="Read list of targets from ~/.ssh/known_hosts files"),
+  make_option("-r", dest="remove", action="store_true", default=False,
+      help="Remove primary identity from remote machine(s)"),
+  make_option("-o", dest="old_id_file", default=False,
+      help="Specifies which old identity to replace with new identity"),
+  make_option("-A", dest="forward", action="store_true", default=False,
+      help="Toggle agent forwarding on/off for remote(s)"),
+  make_option("-v", dest="verbose", action="store_true", default=True,
+      help="Give verbose output"),
+  make_option("-q", dest="verbose", action="store_false",
+      help="Quiet the output")
+]
+#  make_option("-y", dest="accept_unknown", action="store_true", default=False,
+#      help="Accept and save new host key if visiting host for first time"),
+
+"""
+ Define Functions
+"""
+def handler(signum, frame):
+  if signum == 2:
+    standardOut('Caught interrupt signal, exiting...')
+  elif signum == 15:
+    #standardOut('Cleaning up...')
+    # This is more of a place holder, no reason to print extra text
+    pass
+  cleanUp(1)
+
+def getOptions(opt_list, usage, version=''):
+  """
+  Process and return w/ the cli options
+
+  returns dict(opts), list(args)
+  """
+  debugOut('getOptions(opt_list=%s, usage=%s, version=%s)' % (opt_list, 
+      usage, version))
+  p = OptionParser(option_list=opt_list, usage=usage, version=version)
+  (opts, args) = p.parse_args()
+  debugOut(opts, 'Parsed opts are')
+  debugOut(args, 'Parsed args are')
+  return (opts, args)
+
+def validateOptions(opts, args):
+  """
+  Process and return w/ the cli options
+
+  returns dict(opts), list(args)
+  """
+  debugOut('validateOptions(opts=%s, args=%s)' % (opts, args))
+  if (not opts.remove) and (not opts.old_id_file):
+    standardOut(PW_WARN, opts.verbose)
+  standardOut('Preparing to deploy ssh key...', opts.verbose)
+  if not opts.login_name:
+    opts.login_name = environ['USER']
+  opts.login_name = '-l %s' % (opts.login_name)
+  if opts.id_file is None:
+    opts.id_file = findDefaultIdentityFile(ID_FILES)
+  if opts.old_id_file:
+    opts.remove = True
+  if opts.use_known and isHostsFileHashed():
+    msg = "The known_hosts files are hashed.  Please "
+    msg += "specify host or alternate file to parse at cli"
+    raise KeployError, (msg, 50)
+  debugOut(opts, 'Handled opts are')
+  debugOut(args, 'Handled args are')
+  return (opts, args)
+
+def main():
+  # Set the interrupt and terminate signals into the handler
+  signal.signal(signal.SIGINT, handler)
+  signal.signal(signal.SIGTERM, handler)
+
+  (opts, args) = getOptions(OPTIONS_LIST, USAGE)
+  (opts, args) = validateOptions(opts, args)
+
+  if len(args) < 1 :
+    if opts.target_file is not None:
+      host_file = opts.target_file
+    elif opts.use_known:
+      host_file = HOST_FILES
+    else:
+      raise KeployError, "No targets defined."
+    # Gather up available hosts from supplied file
+    hosts = getHostsFromFile(host_file, verbose=opts.verbose)
+    host_msg = '\n\t\t'.join(hosts)
+  else:
+    hosts = args
+    host_msg = hosts[0]
+  standardOut('\tFound host(s):\n\t\t%s' % (host_msg), opts.verbose)
+
+  identity = getIdentity(opts.id_file, opts.verbose)
+
+  if opts.old_id_file:
+    standardOut('\tFinding old public identity file:', opts.verbose)
+    old_identity = getIdentity(opts.old_id_file, opts.verbose)
+  else:
+    old_identity = None
+
+  pushToRemoteHosts(hosts, identity, opts.login_name, opts.forward,
+      opts.remove, old_identity, opts.verbose)
+
+"""
+ Run application
+"""
+if __name__ == "__main__":
+  try:
+    main()
+  except KeployError, data:
+    errorOut(data[0], data[1])

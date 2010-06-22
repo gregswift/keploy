@@ -1,0 +1,24 @@
+keploy 0.4
+===============
+
+Requirements
+===============
+
+* Python modules:
+	- os
+	- sys
+	- signal
+	- optparse
+* openssh-client
+
+
+Installation
+===============
+
+1: copy included keploy file to '/usr/local/bin'
+2: chmod +x /usr/local/bin/keploy
+
+
+How to report bugs
+===============
+Visit http://code.google.com/p/keploy and goto the 'Issues' tab

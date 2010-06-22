@@ -1,0 +1,7 @@
+recursive-include docs *.gz
+recursive-include keploy *
+recursive-include scripts *
+include INSTALL
+include LICENSE
+include README
+include CHANGELOG
