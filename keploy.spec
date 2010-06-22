@@ -1,7 +1,7 @@
 %{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
 Name:           keploy
-Version:        0.5
+Version:        0.6
 Release:        1%{?dist}
 Summary:        cli ssh public key deployment utility
 
@@ -43,5 +43,8 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Tue Jun 22 2010 Greg Swift <gregswift@gmail.com> 0.6-1
+- new version
+
 * Tue Mar 16 2010 Greg Swift <gregswift@gmail.com> 0.5-1
 - initial rpm build

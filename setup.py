@@ -4,7 +4,7 @@ from distutils.core import setup
 #from setuptools import setup,find_packages
 
 NAME = "keploy"
-VERSION = "0.5"
+VERSION = "0.6"
 SHORT_DESC = "%s cli ssh public key deployment utility" % NAME
 LONG_DESC = """
 %s is a python application that allows you to deploy your ssh
