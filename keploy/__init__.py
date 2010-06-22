@@ -27,7 +27,7 @@ class KeployError(Exception):
 """
  Define Variables
 """
-DEBUG = True
+DEBUG = False
 VERSION = "1.0"
 
 PW_WARN = '\nNOTICE: You may be prompted for you password,\n'
