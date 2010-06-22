@@ -85,11 +85,14 @@ def errorOut(msg, ret=1):
 
   returns nothing
   """
-  type = ['WARNING', 'ERROR']
-  out = '%s: %s' % (type[ret], msg)
+  if ret >= 1:
+    prefix = 'ERROR'
+  else:
+    prefix = 'WARNING'
+  out = '%s: %s' % (prefix, msg)
   if ret == 0:
     print out
-  elif ret == 1:
+  elif ret >= 1:
     out += '\n'
     sys.stderr.write(out)
     cleanUp(ret)
@@ -113,15 +116,15 @@ def isHostsFileHashed(verbose=False):
   returns bool()
   """
   for config in SSH_CONFIGS:
-    if (not os.access(config, os.R_OK)):
+    if os.path.exists(config) and not os.access(config, os.R_OK):
       raise KeployError, 'Unable to read config file %s' % (config)
-  execute = "grep HashKnownHosts %s | awk '{print $2}'" % (config)
-  debugOut(execute, '\tExecuting', verbose)
-  is_hash = os.popen(execute).read().strip()
-  debugOut(is_hash, '\tIs known_hosts hashed', verbose)
-  if is_hash == "yes":
-    return True
-  return False
+    execute = "grep HashKnownHosts %s | awk '{print $2}'" % (config)
+    debugOut(execute, '\tExecuting', verbose)
+    is_hash = os.popen(execute).read().strip()
+    debugOut(is_hash, '\tIs known_hosts hashed', verbose)
+    if is_hash == "yes":
+      return True
+    return False
 
 def getHostsFromFile(host_files, verbose=False):
   """
@@ -135,7 +138,9 @@ def getHostsFromFile(host_files, verbose=False):
     host_files = [host_files]
   hosts = []
   for host_file in host_files:
-    if not os.access(host_file, os.R_OK):
+    if not os.path.exists(host_file):
+      continue
+    elif not os.access(host_file, os.R_OK):
       raise KeployError, 'Unable to parse hosts from file: %s' % (host_file)
     for line in open(host_file).readlines():
       host = line.strip().split()[0]
