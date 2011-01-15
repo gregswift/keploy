@@ -19,6 +19,7 @@
 
 import os
 import sys
+import paramiko
 
 class KeployError(Exception):
   def __init__(self, message, code=255):
@@ -243,24 +244,28 @@ def pushToRemoteHosts(hosts, identity, login_name, forward=False,
     if forward and not remove_old:
       toggleAgentForwarding(True, host, login_name, verbose)
 
-def buildSSHPushCommand(host, identity, login_name, forward=False,
+def oldBuildSSHPushCommand(host, identity, login_name, forward=False,
       remove_old=False, old_identity=None, verbose=False):
-    ssh_call = SSH_START_CALL % (login_name, host)
-    standardOut('\tWorking on host: %s' % (host), verbose)
-    if forward:
-      toggleAgentForwarding(False, host, login_name, verbose)
-    command = ''
-    if old_identity is None:
-      old_identity = identity
-    # Make ssh home dir and set permissions
-    command += 'mkdir %s &> /dev/null; chmod 700 %s;' % (SSH_DIR, SSH_DIR)
-    # Remove identity from file and set permissions
-    command +=  'grep -v \"%s\" %s > %s 2> /dev/null;' % (
-      old_identity, AUTH_KEYS_FILE, TMP_FILE)
-    command += 'mv -f %s %s 2>/dev/null;' % (TMP_FILE, AUTH_KEYS_FILE)
-    command += 'chmod 600 %s 2> /dev/null;' % (AUTH_KEYS_FILE)
-    if not remove_old:
-      # Then append the pub identity into the authorized_keys file, and grep it
-      command += 'echo \'%s\' >> %s 2> /dev/null; chmod 600 %s; grep \"%s\" %s' % (
-        identity, AUTH_KEYS_FILE, AUTH_KEYS_FILE, identity, AUTH_KEYS_FILE)
-    return ssh_call+command+SSH_END_CALL
+  ssh_call = SSH_START_CALL % (login_name, host)
+  standardOut('\tWorking on host: %s' % (host), verbose)
+  if forward:
+    toggleAgentForwarding(False, host, login_name, verbose)
+  command = ''
+  if old_identity is None:
+    old_identity = identity
+  # Make ssh home dir and set permissions
+  command += 'mkdir %s &> /dev/null; chmod 700 %s;' % (SSH_DIR, SSH_DIR)
+  # Remove identity from file and set permissions
+  command +=  'grep -v \"%s\" %s > %s 2> /dev/null;' % (
+    old_identity, AUTH_KEYS_FILE, TMP_FILE)
+  command += 'mv -f %s %s 2>/dev/null;' % (TMP_FILE, AUTH_KEYS_FILE)
+  command += 'chmod 600 %s 2> /dev/null;' % (AUTH_KEYS_FILE)
+  if not remove_old:
+    # Then append the pub identity into the authorized_keys file, and grep it
+    command += 'echo \'%s\' >> %s 2> /dev/null; chmod 600 %s; grep \"%s\" %s' % (
+      identity, AUTH_KEYS_FILE, AUTH_KEYS_FILE, identity, AUTH_KEYS_FILE)
+  return ssh_call+command+SSH_END_CALL
+
+def buildSSHPushCommand(host, identity, login_name, forward=False,
+    remove_old=False, old_identity=None, verbose=False):
+  return
