@@ -1,0 +1,12 @@
+Error | Message
+------------------------------------
+1     | No targets defined
+30    | Unable to read config file $config_file_path
+45    | Unable to parse hosts from file $host_file_path
+50    | The known_hosts files are hashed.  Please specify host or alternate file to parse at cli
+60    | Could not find/access default identity files
+65    | Could not find/access identity file $identity_file_path
+80    | Unknown ssh key type $ssh_key_type
+85    | Replacing a key with a different type is not supported, please manually remove key
+100   | SSH binary not locatable by /usr/bin/which
+101   | SSH binary not executable by your user
