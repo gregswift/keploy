@@ -40,7 +40,7 @@ rm -rf %{buildroot}
 
 %files -f INSTALLED_FILES
 %defattr(755,root,root,-)
-
+%doc README CHANGELOG INSTALL LICENSE
 
 
 %changelog

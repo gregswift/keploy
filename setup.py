@@ -23,9 +23,9 @@ if __name__ == "__main__":
                 author_email = "gregswift@gmail.com",
                 url = "https://%s.googlecode.com/" % NAME,
                 license = "GPLv3",
-		scripts = ["scripts/%s" % NAME],
+                scripts = ["scripts/%s" % NAME],
                 package_dir = {NAME: NAME},
-		packages = [NAME],
+                packages = [NAME],
                 data_files = [(manpath,  ["docs/%s.1.gz" % NAME])],
                 description = SHORT_DESC,
                 long_description = LONG_DESC
