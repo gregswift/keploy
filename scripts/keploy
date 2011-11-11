@@ -56,7 +56,11 @@ OPTIONS_LIST = [
   make_option("-v", dest="verbose", action="store_true", default=True,
       help="Give verbose output"),
   make_option("-q", dest="verbose", action="store_false",
-      help="Quiet the output")
+      help="Quiet the output"),
+  make_option("-Y", dest="accept_new_hosts", actions="store_true", default=False,
+      help="Accept unknown host keys, and save them to known_hosts"),
+  make_option("-X", dest="accept_changed_hosts", actions="store_true", default=False,
+      help="Accept host keys that have changed, and replace them in known_hosts")
 ]
 #  make_option("-y", dest="accept_unknown", action="store_true", default=False,
 #      help="Accept and save new host key if visiting host for first time"),
@@ -108,6 +112,10 @@ def validateOptions(opts, args):
     msg = "The known_hosts files are hashed.  Please "
     msg += "specify host or alternate file to parse at cli"
     raise KeployError, (msg, 50)
+  if opts.accept_new_hosts or opts.accept_changed_hosts:
+    if not paramiko:
+      msg = "These options are not suported without paramiko support"
+      raise KeployError, (msg, 99)
   debugOut(opts, 'Handled opts are')
   debugOut(args, 'Handled args are')
   return (opts, args)
@@ -126,7 +134,7 @@ def main():
     elif opts.use_known:
       host_file = HOST_FILES
     else:
-      raise KeployError, "No targets defined."
+      raise KeployError("No targets defined", 1)
     # Gather up available hosts from supplied file
     hosts = getHostsFromFile(host_file, verbose=opts.verbose)
     host_msg = '\n\t\t'.join(hosts)
@@ -144,7 +152,8 @@ def main():
     old_identity = None
 
   pushToRemoteHosts(hosts, identity, opts.login_name, opts.forward,
-      opts.remove, old_identity, opts.verbose)
+      opts.remove, old_identity, opts.accept_new_hosts,
+      opts.accept_changed_hosts, opts.verbose)
 
 """
  Run application
