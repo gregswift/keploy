@@ -8,5 +8,6 @@ Error | Message
 65    | Could not find/access identity file $identity_file_path
 80    | Unknown ssh key type $ssh_key_type
 85    | Replacing a key with a different type is not supported, please manually remove key
+99    | Paramiko library needed to support this feature
 100   | SSH binary not locatable by /usr/bin/which
 101   | SSH binary not executable by your user
