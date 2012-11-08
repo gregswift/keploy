@@ -1,9 +1,9 @@
-keploy 0.3
+keploy 0.7
 ===============
 
 keploy - SSH Public Key Deplyment Utility
-Copyright © 2007 bluEmber Solutions, LLC
-Written by: Greg Swift <gswift@bluember.net>
+Copyright © 2007 Greg Swift
+Written by: Greg Swift <greg.swift@nytefyre.net>
 License: General Public License (GPL) v3
 
 Description
@@ -21,6 +21,10 @@ Usage
 
 * To deploy your default pulic key to host remote.host.com:
      # kepoy remote.host.com
+
+* To deploy your default pulic key to host remote.host.com and auto accept
+  the ssh public key:
+     # kepoy -y remote.host.com
 
 * To deploy your default public key to remote.host.com as user bob and
   enable Agent Forwarding:

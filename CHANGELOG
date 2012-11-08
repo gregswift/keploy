@@ -1,6 +1,6 @@
 Release 0.7 - Nov 8th, 2012 - Greg Swift
 - Added timeout to cli options
-- TODO: Added autoaccept of unknown SSH public keys
+- Added autoaccept of unknown SSH public keys as cli option
 
 Release 0.6 - Jun 22nd, 2010 - Greg Swift 
 - Re-wrote the entire application to be module based
