@@ -53,6 +53,8 @@ OPTIONS_LIST = [
       help="Specifies which old identity to replace with new identity"),
   make_option("-A", dest="forward", action="store_true", default=False,
       help="Toggle agent forwarding on/off for remote(s)"),
+  make_option("-t", dest="timeout", default=None, 
+      help="Sets SSH ConnectTimeout in seconds, does not help refused connections"),
   make_option("-v", dest="verbose", action="store_true", default=True,
       help="Give verbose output"),
   make_option("-q", dest="verbose", action="store_false",
@@ -108,6 +110,11 @@ def validateOptions(opts, args):
     msg = "The known_hosts files are hashed.  Please "
     msg += "specify host or alternate file to parse at cli"
     raise KeployError, (msg, 50)
+  if opts.timeout is not None:
+    try:
+      opts.timeout = int(opts.timeout)
+    except ValueError:
+      raise KeployError, ('Timeout value must be be an integer', 60)
   debugOut(opts, 'Handled opts are')
   debugOut(args, 'Handled args are')
   return (opts, args)
@@ -144,7 +151,7 @@ def main():
     old_identity = None
 
   pushToRemoteHosts(hosts, identity, opts.login_name, opts.forward,
-      opts.remove, old_identity, opts.verbose)
+      opts.remove, old_identity, opts.timeout, opts.verbose)
 
 """
  Run application

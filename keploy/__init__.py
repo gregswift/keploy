@@ -41,7 +41,8 @@ elif not os.access(SSH_BIN, os.X_OK):
 SSH_DIR = '~/.ssh'
 SSH_LOCAL_DIR = os.path.expanduser(SSH_DIR)
 SSH_CONFIGS = ('/etc/ssh/ssh_config', os.path.join(SSH_DIR,'config'))
-SSH_START_CALL = SSH_BIN+' -qq %s %s \''
+SSH_START_CALL = SSH_BIN+' -qq %s %s %s \''
+SSH_OPTION_TIMEOUT = '-oConnectTimeout=%s'
 SSH_END_CALL = '\''
 # Local Files
 ID_FILES = (os.path.join(SSH_LOCAL_DIR, 'id_rsa.pub'),
@@ -180,14 +181,17 @@ def findDefaultIdentityFile(id_files, verbose=False):
       return str(id_file)
   raise KeployError('Could not find/access default identity files')
 
-def toggleAgentForwarding(on, host, login_name, verbose=False):
+def toggleAgentForwarding(on, host, login_name, timeout=None, verbose=False):
   """
   This function checks the state of ForwardAgent in remote system's
   ~/.ssh/config file, and toggles it, on/off as necessary
 
   returns bool(status)
   """
-  ssh_call = SSH_START_CALL % (login_name, host)
+  ssh_options = ''
+  if isinstance(timeout, int):
+    ssh_options += SSH_OPTION_TIMEOUT % (timeout)
+  ssh_call = SSH_START_CALL % (login_name, host, ssh_options)
   command = ''
   forward_option = 'ForwardAgent'
   command +=  'grep -v \"%s\" %s > %s 2> /dev/null;' % (
@@ -216,12 +220,12 @@ def toggleAgentForwarding(on, host, login_name, verbose=False):
   #standardOut('\t\tAgent Forwarding: %s' % (status), verbose)
 
 def pushToRemoteHosts(hosts, identity, login_name, forward=False,
-    remove_old=False, old_identity=None, verbose=False):
+    remove_old=False, old_identity=None, timeout=None, verbose=False):
   if not isinstance(hosts, (tuple, list)):
     hosts = list(hosts)
   for host in hosts:
     command = buildSSHPushCommand(host, identity, login_name, forward,
-        remove_old, old_identity, verbose)
+        remove_old, old_identity, timeout, verbose)
     debugOut(command, 'Executing')
     ret = os.popen(command).readlines()
     if ret:
@@ -241,14 +245,17 @@ def pushToRemoteHosts(hosts, identity, login_name, forward=False,
     standardOut('\t\tPublic Identity Key: %s' % (status), verbose)
 
     if forward and not remove_old:
-      toggleAgentForwarding(True, host, login_name, verbose)
+      toggleAgentForwarding(True, host, login_name, timeout, verbose)
 
 def buildSSHPushCommand(host, identity, login_name, forward=False,
-      remove_old=False, old_identity=None, verbose=False):
-    ssh_call = SSH_START_CALL % (login_name, host)
+      remove_old=False, old_identity=None, timeout=None, verbose=False):
+    ssh_options = ''
+    if isinstance(timeout, int):
+      ssh_options += SSH_OPTION_TIMEOUT % (timeout)
+    ssh_call = SSH_START_CALL % (login_name, host, ssh_options)
     standardOut('\tWorking on host: %s' % (host), verbose)
     if forward:
-      toggleAgentForwarding(False, host, login_name, verbose)
+      toggleAgentForwarding(False, host, login_name, timeout, verbose)
     command = ''
     if old_identity is None:
       old_identity = identity

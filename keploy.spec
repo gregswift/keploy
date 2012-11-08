@@ -1,8 +1,8 @@
 %{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
 Name:           keploy
-Version:        0.6
-Release:        2
+Version:        0.7
+Release:        1
 Summary:        cli ssh public key deployment utility
 
 Group:          Applications/Internet
@@ -44,6 +44,9 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Tue Jun 22 2010 Greg Swift <gregswift@gmail.com> 0.7-1
+- new version: see changelog for specifics
+
 * Tue Jun 22 2010 Greg Swift <gregswift@gmail.com> 0.6-2
 - Fixed arch to be noarch
 - Removed dist from release

@@ -13,6 +13,8 @@ keploy [ -Ahkrqv ] [ -o
 .I ID_FILE
 .B ] [ -l
 .I LOGIN_NAME
+.B ] [ -t
+.I TIMEOUT
 .B ]
 .SH DESCRIPTION
 .B keploy
@@ -26,15 +28,15 @@ Toggle agent forwarding on/off for remote(s)
 .IP "-o OLD_ID_FILE"
 Specifies which old identity to replace with new idenity
 .IP "-f TARGET_FILE"
-Read list of targets from a text file, with one line per host.
+Read list of targets from a text file, with one line per host
 .IP "-i ID_FILE"
-Selects a file from which the public identity will be read.  The default is
+Selects a file from which the public identity will be read, default is
 .I ~/.ssh/identity.pub
 for protocol version 1, and
 .I ~/.ssh/id_rsa.pub
 and
 .I ~/.ssh/id_dsa.pub
-for protocol version 2.
+for protocol version 2
 .IP -h
 Show the help message and exit
 .IP -k
@@ -42,11 +44,13 @@ Read list of targets from
 .I ~/.ssh/known_hosts
 files
 .IP "-l LOGIN_NAME"
-Specifies the user to log in as on the remote machine(s).
+Specifies the user to log in as on the remote machine(s)
 .IP -r
 Remove primary identity from remote machine(s)
 .IP -q
 Quiet the output
+.IP -t
+Set the SSH ConnectTimeout value in seconds, see ssh_config (5) for details
 .IP -v
 Give verbose output
 .IP -y
