@@ -55,13 +55,13 @@ OPTIONS_LIST = [
       help="Toggle agent forwarding on/off for remote(s)"),
   make_option("-t", dest="timeout", default=None, 
       help="Sets SSH ConnectTimeout in seconds, does not help refused connections"),
+  make_option("-y", dest="accept_unknown", action="store_true", default=False,
+      help="Accept and save new host key if visiting host for first time"),
   make_option("-v", dest="verbose", action="store_true", default=True,
       help="Give verbose output"),
   make_option("-q", dest="verbose", action="store_false",
       help="Quiet the output")
 ]
-#  make_option("-y", dest="accept_unknown", action="store_true", default=False,
-#      help="Accept and save new host key if visiting host for first time"),
 
 """
  Define Functions
@@ -151,7 +151,8 @@ def main():
     old_identity = None
 
   pushToRemoteHosts(hosts, identity, opts.login_name, opts.forward,
-      opts.remove, old_identity, opts.timeout, opts.verbose)
+      opts.remove, old_identity, opts.accept_unknown, opts.timeout,
+      opts.verbose)
 
 """
  Run application
