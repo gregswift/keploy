@@ -31,7 +31,7 @@ uninstall: clean
 uninstall_rpms: clean
 	rpm -e ${PACKAGE}
 
-sdist:
+sdist: manpage
 	python setup.py sdist
 
 prep_rpmbuild: build sdist

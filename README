@@ -19,12 +19,12 @@ Usage
   hosts in your known_hosts file:
      # keploy -k
 
-* To deploy your default pulic key to host remote.host.com:
-     # kepoy remote.host.com
+* To deploy your default public key to host remote.host.com:
+     # keploy remote.host.com
 
-* To deploy your default pulic key to host remote.host.com and auto accept
+* To deploy your default public key to host remote.host.com and auto accept
   the ssh public key:
-     # kepoy -y remote.host.com
+     # keploy -y remote.host.com
 
 * To deploy your default public key to remote.host.com as user bob and
   enable Agent Forwarding:
