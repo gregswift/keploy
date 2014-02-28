@@ -78,4 +78,5 @@ debs: prep_debbuild
 	TARGET=${DEBBUILDDIR}/$$DEBBASE.orig.tar.gz; \
 	ln -f -s ../../${SDISTDIR}/$$SDISTPACKAGE $$TARGET; \
 	tar -xz -f $$TARGET -C ${DEBBUILDDIR}; \
-	ln -f -s ../../../debian ${DEBBUILDDIR}/$$BASE
+	rm -rf ${DEBBUILDDIR}/$$BASE/debian; \
+	cp -pr debian/ ${DEBBUILDDIR}/$$BASE
