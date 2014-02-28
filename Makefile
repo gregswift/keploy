@@ -5,19 +5,21 @@ ARCH = noarch
 
 # Variables for clean build directory tree under repository
 BUILDDIR = ./build
-SDISTDIR = ${BUILDDIR}/sdist
+ARTIFACTDIR = ./artifacts/
+SDISTDIR = ${ARTIFACTDIR}/sdist
 RPMBUILDDIR = ${BUILDDIR}/rpm-build
-RPMDIR = ${BUILDDIR}/rpms
+RPMDIR = ${ARTIFACTDIR}/rpms
 DEBBUILDDIR = ${BUILDDIR}/deb-build
+DEBDIR = ${ARTIFACTDIR}/debs
 
 # base rpmbuild command that utilizes the local buildroot
 # not using the above variables on purpose.
 # if you can make it work, PRs are welcome!
 RPMBUILD = rpmbuild --define "_topdir %(pwd)/build" \
-	--define "_sourcedir  %{_topdir}/sdist" \
+	--define "_sourcedir  %{_topdir}/artifacts/sdist" \
 	--define "_builddir %{_topdir}/rpm-build" \
 	--define "_srcrpmdir %{_rpmdir}" \
-	--define "_rpmdir %{_topdir}/rpms"
+	--define "_rpmdir %{_topdir}/artifacts/rpms"
 
 # Allow which python to be overridden at the environment level
 PYTHON := $(shell which python)
@@ -29,6 +31,9 @@ clean:
 	rm -rf docs/*.gz
 	rm -rf *.egg-info
 	find . -name '*.pyc' -exec rm -f {} \;
+
+clean_all: clean
+	rm -rf ${ARTIFACTDIR}/
 
 manpage:
 	gzip -c docs/${PACKAGE}.1 > docs/${PACKAGE}.1.gz
@@ -70,6 +75,7 @@ prep_build: manpage sdist
 
 prep_debbuild: prep_build
 	mkdir -p ${DEBBUILDDIR}
+	mkdir -p ${DEBDIR}
 	SDISTPACKAGE=`ls ${SDISTDIR}`; \
 	BASE=`basename $$SDISTPACKAGE .tar.gz`; \
 	DEBBASE=`echo $$BASE | sed 's/-/_/'`; \
@@ -84,3 +90,5 @@ debs: prep_debbuild
 	BASE=`basename $$SDISTPACKAGE .tar.gz`; \
 	cd ${DEBBUILDDIR}/$$BASE; \
 	debuild -uc -us
+	mv ${DEBBUILDDIR}/*.deb ${DEBDIR}/
+
