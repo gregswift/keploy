@@ -16,10 +16,10 @@ DEBDIR = ${ARTIFACTDIR}/debs
 # not using the above variables on purpose.
 # if you can make it work, PRs are welcome!
 RPMBUILD = rpmbuild --define "_topdir %(pwd)/build" \
-	--define "_sourcedir  %{_topdir}/artifacts/sdist" \
+	--define "_sourcedir  %(pwd)/artifacts/sdist" \
 	--define "_builddir %{_topdir}/rpm-build" \
 	--define "_srcrpmdir %{_rpmdir}" \
-	--define "_rpmdir %{_topdir}/artifacts/rpms"
+	--define "_rpmdir %(pwd)/artifacts/rpms"
 
 # Allow which python to be overridden at the environment level
 PYTHON := $(shell which python)
