@@ -1,0 +1,14 @@
+Source: keploy
+Maintainer: Dave Beckett <dave@dajobe.org>
+Section: python
+Priority: optional
+Build-Depends: python-all (>= 2.6.6-3), debhelper (>= 7.4.3)
+Standards-Version: 3.9.3
+
+Package: python-keploy
+Architecture: all
+Depends: ${misc:Depends}, ${python:Depends}
+Description: keploy cli ssh public key deployment utility
+ keploy is a python application that allows you to deploy your ssh
+ public key to remote systems without having to remember all the
+ little things, like file permissions.

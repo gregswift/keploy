@@ -1,0 +1,5 @@
+keploy (0.7-1) precise; urgency=low
+
+  * Initial packaging
+
+ -- Dave Beckett <dave@dajobe.org>  Fri, 28 Feb 2014 08:48:19 -0800
