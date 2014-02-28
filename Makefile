@@ -32,7 +32,7 @@ clean:
 manpage:
 	gzip -c docs/${PACKAGE}.1 > docs/${PACKAGE}.1.gz
 
-build: clean
+build: clean manpage
 	${PYTHON} setup.py build -f
 
 install: build
@@ -53,7 +53,7 @@ uninstall_rpms: clean
 sdist:
 	${PYTHON} setup.py sdist -d "${SDISTDIR}"
 
-prep_rpmbuild: sdist
+prep_rpmbuild: manpage sdist
 	mkdir -p ${RPMBUILDDIR}
 	mkdir -p ${RPMDIR}
 	cp ${SDISTDIR}/*gz ${RPMBUILDDIR}/
