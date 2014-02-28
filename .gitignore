@@ -1,3 +1,5 @@
 MANIFEST
 build/
 docs/*.gz
+*.pyo
+*.pyc
