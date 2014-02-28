@@ -5,7 +5,7 @@ ARCH = noarch
 
 # Variables for clean build directory tree under repository
 BUILDDIR = ./build
-ARTIFACTDIR = ./artifacts/
+ARTIFACTDIR = ./artifacts
 SDISTDIR = ${ARTIFACTDIR}/sdist
 RPMBUILDDIR = ${BUILDDIR}/rpm-build
 RPMDIR = ${ARTIFACTDIR}/rpms
