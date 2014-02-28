@@ -8,6 +8,7 @@ BUILDDIR = ./build
 SDISTDIR = ${BUILDDIR}/sdist
 RPMBUILDDIR = ${BUILDDIR}/rpm-build
 RPMDIR = ${BUILDDIR}/rpms
+DEBBUILDDIR = ${BUILDDIR}/deb-build
 
 # base rpmbuild command that utilizes the local buildroot
 # not using the above variables on purpose.
@@ -53,7 +54,7 @@ uninstall_rpms: clean
 sdist:
 	${PYTHON} setup.py sdist -d "${SDISTDIR}"
 
-prep_rpmbuild: manpage sdist
+prep_rpmbuild: prep_build
 	mkdir -p ${RPMBUILDDIR}
 	mkdir -p ${RPMDIR}
 	cp ${SDISTDIR}/*gz ${RPMBUILDDIR}/
@@ -63,3 +64,18 @@ rpms: prep_rpmbuild
 
 srpm: prep_rpmbuild
 	${RPMBUILD} -bs ${PACKAGE}.spec
+
+prep_build: manpage sdist
+	mkdir -p ${BUILDDIR}
+
+prep_debbuild: prep_build
+	mkdir -p ${DEBBUILDDIR}
+
+debs: prep_debbuild
+	SDISTPACKAGE=`ls ${SDISTDIR}`; \
+	BASE=`basename $$SDISTPACKAGE .tar.gz`; \
+	DEBBASE=`echo $$BASE | sed 's/-/_/'`; \
+	TARGET=${DEBBUILDDIR}/$$DEBBASE.orig.tar.gz; \
+	ln -f -s ../../${SDISTDIR}/$$SDISTPACKAGE $$TARGET; \
+	tar -xz -f $$TARGET -C ${DEBBUILDDIR}; \
+	ln -f -s ../../../debian ${DEBBUILDDIR}/$$BASE
