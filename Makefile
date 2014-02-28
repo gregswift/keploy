@@ -70,8 +70,6 @@ prep_build: manpage sdist
 
 prep_debbuild: prep_build
 	mkdir -p ${DEBBUILDDIR}
-
-debs: prep_debbuild
 	SDISTPACKAGE=`ls ${SDISTDIR}`; \
 	BASE=`basename $$SDISTPACKAGE .tar.gz`; \
 	DEBBASE=`echo $$BASE | sed 's/-/_/'`; \
@@ -80,3 +78,7 @@ debs: prep_debbuild
 	tar -xz -f $$TARGET -C ${DEBBUILDDIR}; \
 	rm -rf ${DEBBUILDDIR}/$$BASE/debian; \
 	cp -pr debian/ ${DEBBUILDDIR}/$$BASE
+
+debs: prep_debbuild
+	cd ${DEBBUILDDIR}/$$BASE
+	debuild -uc -us
