@@ -80,5 +80,7 @@ prep_debbuild: prep_build
 	cp -pr debian/ ${DEBBUILDDIR}/$$BASE
 
 debs: prep_debbuild
-	cd ${DEBBUILDDIR}/$$BASE
+	SDISTPACKAGE=`ls ${SDISTDIR}`; \
+	BASE=`basename $$SDISTPACKAGE .tar.gz`; \
+	cd ${DEBBUILDDIR}/$$BASE; \
 	debuild -uc -us
